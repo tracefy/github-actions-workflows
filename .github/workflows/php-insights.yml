@@ -5,7 +5,7 @@ on:
 
 jobs:
   clean:
-    uses: tracefy/github-actions-workflows/.github/workflowsutilities-clean.yml@master
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   normalize:
     needs:
       - clean
