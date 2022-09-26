@@ -1,0 +1,30 @@
+name: normalize composer.json
+
+on:
+  workflow_call:
+
+jobs:
+  clean:
+    uses: tracefy/github-actions-workflows/.github/workflows/clean.yml@master
+  normalize:
+    needs:
+      - clean
+    runs-on: [ self-hosted ]
+
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+      - name: normalize composer.json
+        run: |
+          ${{ secrets.PACKAGIST_SET_CONFIG}}
+          composer global config --no-plugins allow-plugins.ergebnis/composer-normalize true
+          composer config --no-plugins allow-plugins.ergebnis/composer-normalize true
+          composer global require ergebnis/composer-normalize
+          composer normalize
+      - uses: stefanzweifel/git-auto-commit-action@v4.14.1
+        with:
+          commit_message: normalize composer.json

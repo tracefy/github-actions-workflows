@@ -1,0 +1,27 @@
+name: Psalm
+
+on:
+  workflow_call:
+
+jobs:
+  clean:
+    uses: tracefy/github-actions-workflows/.github/workflows/clean.yml@master
+  psalm:
+    needs:
+      - clean
+    name: psalm
+    runs-on: [ self-hosted ]
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+      - name: Install Dependencies
+        run: |
+          ${{ secrets.PACKAGIST_SET_CONFIG}}
+          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      - name: Run psalm
+        run: ./vendor/bin/psalm
+
