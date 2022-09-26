@@ -5,7 +5,7 @@ on:
 
 jobs:
   clean:
-    uses: tracefy/github-actions-workflows/.github/workflows/clean.yml@master
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   test:
     runs-on: ubuntu-latest
     needs:
