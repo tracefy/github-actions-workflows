@@ -1,0 +1,48 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+      service:
+        required: false
+        type: string
+        default: ${{ github.event.repository.name }}
+
+    secrets:
+      host:
+        required: true
+
+      ssh_private_key:
+        required: true
+
+      registry:
+        required: true
+
+
+jobs:
+  clean:
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
+
+  deploy:
+    needs:
+      - clean
+    runs-on: [ self-hosted ]
+    steps:
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.ssh_private_key }}
+          ssh-auth-sock: /tmp/ssh_agent.sock
+
+      - name: AWS login
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: ssh ${{ secrets.host }} 'sudo su -c "/usr/local/bin/aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${{ secrets.registry }}"'
+
+      - name: Deploy container
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: ssh ${{ secrets.host }} 'sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
