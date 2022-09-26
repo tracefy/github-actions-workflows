@@ -1,0 +1,56 @@
+name: Tag image
+
+on:
+  workflow_call:
+
+jobs:
+  clean:
+    uses: ./.github/workflows/clean.yml
+  tag:
+    runs-on: [ self-hosted ]
+    needs:
+      - clean
+    steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@49ed152c8eca782a232dede0303416e8f356c37b
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v3
+      - name: Declare variables
+        id: vars
+        shell: bash
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      - name: Build image for commit
+        if: ${{ inputs.tag == 'latest' }}
+        run: |
+          docker build -t ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} .
+          docker push ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }}
+
+      - name: Pull committed image
+        if: ${{ inputs.tag != 'latest' }}
+        run: docker pull ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }}
+
+      - name: Tag / push image
+        run: |
+          docker tag ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }}
+          docker push ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }}
+
+      - name: Tag / push child images
+        if: ${{ inputs.tag != 'latest' }}
+        run: |
+          VAR=${{ inputs.tag }};IFS=".";
+          set -- $VAR;
+          unset IFS;
+          docker tag ${{ secrets.REGISTRY }}/${{ github.event.repository.name }}:${{ inputs.tag }} ghcr.io/tracefy/${{ github.event.repository.name }}:$1;
+          docker push ghcr.io/tracefy/${{ github.event.repository.name }}:$1
+
+          VAR=${{ inputs.tag }};IFS=".";
+          set -- $VAR;unset IFS;
+          docker tag ${{ secrets.REGISTRY }}/${{ github.event.repository.name }}:${{ inputs.tag }} ghcr.io/tracefy/${{ github.event.repository.name }}:$1.$2;
+          docker push ghcr.io/tracefy/${{ github.event.repository.name }}:$1.$2
