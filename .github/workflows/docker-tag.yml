@@ -2,6 +2,10 @@ name: Tag image
 
 on:
   workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
 
 jobs:
   clean:
