@@ -45,7 +45,7 @@ jobs:
       - name: Github docker login
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GITHUB_TOKEN }} |docker login ghcr.io -u ${{ github.actor }} --password-stdin"'
+        run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin"'
 
       - name: Deploy container
         env:
