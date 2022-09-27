@@ -1,0 +1,46 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      host:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: [ self-hosted ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-auth-sock: /tmp/ssh_agent.sock
+
+      - name: Login to registry GitLab
+        run: |
+          ssh  ${{ inputs.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login -u docker --password-stdin registry.gitlab.com'
+
+      - name: Login to registery AWS
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh  ${{ inputs.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
+
+      - name: Move docker compose file
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          scp -r ./docker-compose.yml ${{ inputs.host }}:/home/tracefy/docker-compose.yml
+
+      - name: Deploy
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh -t ${{ inputs.host }} 'sudo docker stack deploy --with-registry-auth --compose-file /home/tracefy/docker-compose.yml --prune default'
+
+      - name: Remove docker compose file
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh -t ${{ inputs.host }} 'rm /home/tracefy/docker-compose.yml'
