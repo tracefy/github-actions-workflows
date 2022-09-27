@@ -10,17 +10,13 @@ on:
 jobs:
   tests:
     runs-on: [ self-hosted ]
-    strategy:
-      matrix:
-        node-version: ${{ matrix.version }}
-
     steps:
       - uses: actions/checkout@v3
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: ${{ inputs.node-version }}
           cache: 'npm'
 
       - name : Compile app
