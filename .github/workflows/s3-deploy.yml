@@ -1,6 +1,17 @@
 name: Deploy
 on:
   workflow_call:
+    inputs:
+      folder:
+        required: true
+        type: string
+      bucket:
+        required: true
+        type: string
+      dist-id:
+        required: true
+        type: string
+
 jobs:
   build:
     runs-on: [ self-hosted ]
@@ -23,7 +34,7 @@ jobs:
       - name: Deploy
         uses: lbertenasco/s3-deploy@v1
         with:
-          folder: _static
-          bucket: tcf.follow.tracefy.acceptance
-          dist-id: E5DJ6BSE0LE44
+          folder: ${{ inputs.folder }}
+          bucket: ${{ inputs.bucket }}
+          dist-id: ${{ inputs.dist-id }}
           invalidation: / *
