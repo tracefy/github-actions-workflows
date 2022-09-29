@@ -47,7 +47,7 @@ jobs:
           MYSQL_PASSWORD: mysql
           MYSQL_DATABASE: api
           MYSQL_ROOT_PASSWORD: mysql
-        run: php artisan migrate:fresh && php artisan db:seed
+        run: php artisan migrate:fresh --seed
 
       - name: Directory Permissions
         run: chmod -R 777 storage bootstrap/cache
