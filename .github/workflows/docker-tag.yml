@@ -14,12 +14,14 @@ jobs:
     runs-on: [ self-hosted ]
     needs:
       - clean
-    permissions:
-      packages: write
     steps:
       - name: Log in to the Container registry
-        run: |
-         echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u USERNAME --password-stdin
+        uses: docker/login-action@master
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/checkout@v3
       - name: Declare variables
         id: vars
