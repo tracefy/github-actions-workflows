@@ -25,11 +25,8 @@ jobs:
           echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
       - name: Log in to the Container registry
-        uses: docker/login-action@master
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GH_PA_TOKEN }}
+        run: |
+          echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u USERNAME --password-stdin
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
