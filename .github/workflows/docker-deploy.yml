@@ -42,10 +42,9 @@ jobs:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         run: ssh ${{ secrets.host }} 'sudo su -c "/usr/local/bin/aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${{ secrets.registry }}"'
 
-      - name: Github docker login
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin"'
+      - name: Log in to the Container registry
+        run: |
+          echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u USERNAME --password-stdin
 
       - name: Deploy container
         env:
