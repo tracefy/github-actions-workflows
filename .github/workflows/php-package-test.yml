@@ -1,0 +1,25 @@
+name: CI Test php packages
+
+on:
+  workflow_call:
+
+jobs:
+  clean:
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
+  laravel-tests:
+    needs:
+      - clean
+    runs-on: [ self-hosted ]
+    steps:
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+
+      - uses: actions/checkout@v3
+      - name: Install Dependencies
+        run: |
+          ${{ secrets.PACKAGIST_SET_CONFIG}}
+          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist --ignore-platform-reqs
+      - name: Run tests
+        run: composer test

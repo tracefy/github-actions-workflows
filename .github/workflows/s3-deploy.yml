@@ -11,7 +11,9 @@ on:
       dist-id:
         required: true
         type: string
-
+      node-version:
+        required: true
+        type: string
 jobs:
   build:
     runs-on: [ self-hosted ]
@@ -23,13 +25,13 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: ${{ inputs.node-version }}
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build
-        run: npm run  export
+        run: npm run export
 
       - name: Deploy
         uses: lbertenasco/s3-deploy@v1
