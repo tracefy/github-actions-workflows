@@ -39,7 +39,7 @@ jobs:
 
       - name: AWS login
         env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+          SSH_AUTH_SOCK: /tmp/${{ steps.vars.outputs.sha_short }}ssh_agent.sock
         run: ssh ${{ secrets.host }} 'sudo su -c "/usr/local/bin/aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${{ secrets.registry }}"'
 
       - name: Github docker login
