@@ -23,7 +23,7 @@ on:
         required: true
 
 env:
-  SSH_AUTH_SOCK: /tmp/${{ $RANDOM }}ssh_agent.sock
+  SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
 jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
