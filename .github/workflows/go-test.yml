@@ -23,12 +23,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Log in to the Container registry
-        uses: docker/login-action@master
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GH_PA_TOKEN }}
-
+        run: |
+          echo $CR_PAT | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
