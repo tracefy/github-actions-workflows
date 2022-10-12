@@ -8,11 +8,11 @@ on:
         type: string
 
 jobs:
-  clean:
-    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
+#  clean:
+#    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   tag:
-    needs:
-      - clean
+#    needs:
+#      - clean
     runs-on: [ self-hosted ]
 
     steps:
