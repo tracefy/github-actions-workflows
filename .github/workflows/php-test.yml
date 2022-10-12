@@ -22,7 +22,7 @@ jobs:
           MYSQL_DATABASE: api
           MYSQL_ROOT_PASSWORD: mysql
         ports:
-          - 3306:3306
+          - 3306
     runs-on: [ self-hosted ]
 
     steps:
