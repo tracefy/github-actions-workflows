@@ -38,5 +38,6 @@ jobs:
 
       - name: Test
         env:
+          AWS_ENDPOINT: http://127.0.0.1:${{job.services.dynamodb.ports[8000]}}
           DB_CONNECTION: mariadb:mariadb@tcp(127.0.0.1:${{job.services.mariadb.ports[3306]}})/api
         run: go clean --testcache && go test -v ./...
