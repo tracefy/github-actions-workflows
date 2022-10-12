@@ -20,6 +20,12 @@ jobs:
           MYSQL_ROOT_PASSWORD: mariadb
         ports:
           - 3306
+
+      dynamodb:
+        image: amazon/dynamodb-local:latest
+        ports:
+          - 8000
+
     steps:
       - uses: actions/checkout@v3
 #      - name: Log in to the packages registery.
