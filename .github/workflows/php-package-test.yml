@@ -37,6 +37,4 @@ jobs:
           MYSQL_PASSWORD: mysql
           MYSQL_DATABASE: api
           MYSQL_ROOT_PASSWORD: mysql
-        run: |
-          echo $MYSQL_HOST
-          composer test
+        run: composer test
