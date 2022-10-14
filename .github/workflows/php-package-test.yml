@@ -32,6 +32,7 @@ jobs:
           MYSQL_PASSWORD: mysql
           MYSQL_DATABASE: api
           MYSQL_ROOT_PASSWORD: mysql
+        run: echo "DB installed"
 
       - uses: actions/checkout@v3
 
