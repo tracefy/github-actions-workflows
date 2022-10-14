@@ -32,7 +32,6 @@ jobs:
           MYSQL_PASSWORD: mysql
           MYSQL_DATABASE: api
           MYSQL_ROOT_PASSWORD: mysql
-        run: php artisan migrate:fresh && php artisan db:seed
 
       - uses: actions/checkout@v3
 
