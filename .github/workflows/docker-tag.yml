@@ -19,7 +19,7 @@ jobs:
         uses: docker/login-action@master
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ secrets.GH_PA_USER }}
           password: ${{ secrets.GH_PA_TOKEN }}
 
       - uses: actions/checkout@master
