@@ -10,13 +10,32 @@ jobs:
     needs:
       - clean
     runs-on: [ self-hosted ]
+    services:
+      mysql:
+        image: mariadb:10.5
+        env:
+          MYSQL_USER: mysql
+          MYSQL_PASSWORD: mysql
+          MYSQL_DATABASE: api
+          MYSQL_ROOT_PASSWORD: mysql
+        ports:
+          - 3306
     steps:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
+      - name: Setup DB
+        env:
+          MYSQL_HOST: 127.0.0.1:${{ job.services.mysql.ports['3306'] }}
+          MYSQL_USER: mysql
+          MYSQL_PASSWORD: mysql
+          MYSQL_DATABASE: api
+          MYSQL_ROOT_PASSWORD: mysql
+        run: php artisan migrate:fresh && php artisan db:seed
 
       - uses: actions/checkout@v3
+
       - name: Install Dependencies
         run: |
           ${{ secrets.PACKAGIST_SET_CONFIG}}
