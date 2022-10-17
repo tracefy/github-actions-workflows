@@ -40,8 +40,11 @@ jobs:
     steps:
       - name: Login to register AWS
         run: |
+    
           ssh ${{ secrets.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
 
+      - name: Tag version
+        run: echo ${{ inputs.tag }}
 #      - name: Login to registry GitLab
 #        run: ssh ${{ secrets.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
 
