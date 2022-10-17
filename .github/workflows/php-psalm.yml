@@ -7,13 +7,15 @@ jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   psalm:
-    container:
-      image: ghcr.io/tracefy/master-disk-php:alpine-latest
     needs:
       - clean
     name: psalm
     runs-on: [ self-hosted ]
     steps:
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
       - name: Git checkout
         uses: actions/checkout@v3
       - name: Install Dependencies
