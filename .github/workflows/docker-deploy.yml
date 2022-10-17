@@ -10,9 +10,6 @@ on:
         required: false
         type: string
         default: ${{ github.event.repository.name }}
-      host:
-        type: string
-        required: true
 env:
   SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
 jobs:
@@ -25,7 +22,9 @@ jobs:
     runs-on: [ self-hosted ]
     steps:
       - name: Login to registery AWS
-        run: ssh ${{ inputs.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
+        run: |
+          echo $HOST
+          ssh ${{ inputs.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
 
       - name: Login to registry GitLab
         run: ssh ${{ inputs.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
