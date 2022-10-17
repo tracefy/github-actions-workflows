@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Login to registery AWS
         run: |
-          echo "$SSH_AUTH_SOCK"
+          echo $SSH_AUTH_SOCK
           echo pwd
           ssh ${{ inputs.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
 
