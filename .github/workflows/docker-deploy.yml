@@ -6,22 +6,12 @@ on:
       tag:
         required: true
         type: string
-
       service:
         required: false
         type: string
         default: ${{ github.event.repository.name }}
-
-    secrets:
       host:
         required: true
-
-      ssh_private_key:
-        required: true
-
-      registry:
-        required: true
-
 env:
   SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
 jobs:
@@ -38,15 +28,15 @@ jobs:
           ssh-private-key: ${{ secrets.ssh_private_key }}
 
       - name: Login to registery AWS
-        run: ssh ${{ secrets.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
+        run: ssh ${{ inputs.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
 
       - name: Login to registry GitLab
-        run: ssh ${{ secrets.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
+        run: ssh ${{ inputs.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
 
       - name: Github docker login
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin"'
+        run: ssh ${{ inputs.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
 
       - name: Deploy container
-        run: ssh ${{ secrets.host }} 'sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
+        run: ssh ${{ inputs.host }} 'sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
