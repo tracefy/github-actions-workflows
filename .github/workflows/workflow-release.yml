@@ -20,9 +20,6 @@ on:
       GH_PA_USER:
         description: 'some description'
         required: true
-      GITLAB_DEPLOY_TOKEN:
-        description: 'some description'
-        required: true
 jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@v1
