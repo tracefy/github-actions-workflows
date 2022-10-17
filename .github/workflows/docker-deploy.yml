@@ -28,7 +28,7 @@ on:
         required: true
 
 env:
-  SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
+  SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}/ssh_agent.sock
 jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
@@ -42,12 +42,10 @@ jobs:
         run: |
           ssh ${{ secrets.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
 
-      - name: Login to registry GitLab
-        run: ssh ${{ secrets.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
+#      - name: Login to registry GitLab
+#        run: ssh ${{ secrets.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
 
       - name: Github docker login
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
         run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
 
       - name: Deploy container
