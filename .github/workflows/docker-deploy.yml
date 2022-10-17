@@ -14,9 +14,6 @@ on:
       host:
         description: 'some description'
         required: true
-      ssh_private_key:
-        description: 'some description'
-        required: true
       registry:
         description: 'some description'
         required: true
