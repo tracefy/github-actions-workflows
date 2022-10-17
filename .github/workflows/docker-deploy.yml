@@ -11,6 +11,7 @@ on:
         type: string
         default: ${{ github.event.repository.name }}
       host:
+        type: string
         required: true
 env:
   SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
