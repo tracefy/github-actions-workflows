@@ -14,6 +14,15 @@ on:
       GH_PA_TOKEN:
         description: 'A token passed from the caller workflow'
         required: true
+      host:
+        description: 'A token passed from the caller workflow'
+        required: true
+      ssh_private_key:
+        description: 'A token passed from the caller workflow'
+        required: true
+      registry:
+        description: 'A token passed from the caller workflow'
+        required: true
       GH_PA_USER:
         description: 'A token passed from the caller workflow'
         required: true
