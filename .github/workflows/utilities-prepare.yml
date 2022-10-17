@@ -1,0 +1,16 @@
+name: Prepare
+on:
+  workflow_call:
+outputs:
+  branch: ${{ steps.vars.outputs.branch }}
+  tag: ${{ steps.vars.outputs.tag }}
+  sha_short: ${{ steps.vars.outputs.sha_short }}
+steps:
+  - uses: actions/checkout@v3
+  - name: Declare variables
+    id: vars
+    shell: bash
+    run: |
+      echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      echo "##[set-output name=tag;]$(echo ${GITHUB_REF/refs\/tags\//})"
+      echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
