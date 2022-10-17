@@ -56,6 +56,5 @@ jobs:
       registry: ${{ secrets.REGISTRY }}
       GH_PA_TOKEN: ${{ secrets.GH_PA_TOKEN }}
       GH_PA_USER: ${{ secrets.GH_PA_USER }}
-      GITLAB_DEPLOY_TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
     with:
       tag: ${{github.ref_name}}
