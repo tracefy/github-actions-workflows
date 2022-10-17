@@ -10,6 +10,26 @@ on:
         required: false
         type: string
         default: ${{ github.event.repository.name }}
+    secrets:
+      host:
+        description: 'some description'
+        required: true
+      ssh_private_key:
+        description: 'some description'
+        required: true
+      registry:
+        description: 'some description'
+        required: true
+      GH_PA_TOKEN:
+        description: 'some description'
+        required: true
+      GH_PA_USER:
+        description: 'some description'
+        required: true
+      GITLAB_DEPLOY_TOKEN:
+        description: 'some description'
+        required: true
+
 env:
   SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
 jobs:
