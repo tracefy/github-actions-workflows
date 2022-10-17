@@ -52,4 +52,4 @@ jobs:
         run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
 
       - name: Deploy container
-        run: ssh ${{ secrets.host }} 'sudo docker service update --image=ghcr.io/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
+        run: ssh ${{ secrets.host }} 'sudo docker service update --image=ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
