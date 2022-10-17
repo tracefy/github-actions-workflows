@@ -11,7 +11,7 @@ on:
         type: string
         default: ${{ github.event.repository.name }}
     secrets:
-      GH_PA_TOKEN:
+      gh_pa_token:
         description: 'A token passed from the caller workflow'
         required: true
       host:
@@ -23,7 +23,7 @@ on:
       registry:
         description: 'A token passed from the caller workflow'
         required: true
-      GH_PA_USER:
+      gh_pa_user:
         description: 'A token passed from the caller workflow'
         required: true
 env:
