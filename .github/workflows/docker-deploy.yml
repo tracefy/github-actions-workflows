@@ -11,10 +11,10 @@ on:
         type: string
         default: ${{ github.event.repository.name }}
     secrets:
-      gh_pa_token:
+      GH_PA_TOKEN:
         description: 'A token passed from the caller workflow'
         required: true
-      gh_pa_user:
+      GH_PA_USER:
         description: 'A token passed from the caller workflow'
         required: true
 env:
