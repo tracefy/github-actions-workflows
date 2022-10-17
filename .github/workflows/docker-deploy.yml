@@ -21,19 +21,17 @@ jobs:
       - clean
     runs-on: [ self-hosted ]
     steps:
-      - name: Login to registery AWS
+      - name: Login to register AWS
         run: |
-          echo $SSH_AUTH_SOCK
-          echo pwd
-          ssh ${{ inputs.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
+          ssh ${{ secrets.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
 
       - name: Login to registry GitLab
-        run: ssh ${{ inputs.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
+        run: ssh ${{ secrets.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
 
       - name: Github docker login
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: ssh ${{ inputs.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
+        run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
 
       - name: Deploy container
-        run: ssh ${{ inputs.host }} 'sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
+        run: ssh ${{ secrets.host }} 'sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
