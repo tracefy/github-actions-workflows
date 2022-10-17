@@ -21,7 +21,6 @@ jobs:
           registry-url: https://npm.pkg.github.com/
           username: ${{ secrets.GH_PA_USER }}
           password: ${{ secrets.GH_PA_TOKEN }}
-      - run: rm -rf dist
       - run: npm ci
       - run: npm run build
       - run: ls && pwd
