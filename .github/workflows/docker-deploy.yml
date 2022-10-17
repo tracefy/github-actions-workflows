@@ -23,9 +23,9 @@ on:
       GH_PA_USER:
         description: 'some description'
         required: true
-      GITLAB_DEPLOY_TOKEN:
-        description: 'some description'
-        required: true
+#      GITLAB_DEPLOY_TOKEN:
+#        description: 'some description'
+#        required: true
 
 env:
   SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}/ssh_agent.sock
