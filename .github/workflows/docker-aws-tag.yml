@@ -10,19 +10,28 @@ on:
 jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
-  tag:
+  prepare:
     needs:
       - clean
     runs-on: [ self-hosted ]
-
+    outputs:
+      branch: ${{ steps.vars.outputs.branch }}
+      tag: ${{ steps.vars.outputs.tag }}
+      sha_short: ${{ steps.vars.outputs.sha_short }}
     steps:
       - uses: actions/checkout@v3
       - name: Declare variables
         id: vars
         shell: bash
         run: |
-          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+          echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+          echo "sha_short=git rev-parse --short HEAD" >> $GITHUB_OUTPUT
+  tag:
+    runs-on: [ self-hosted ]
+    needs:
+      - prepare
+    steps:
+      - uses: actions/checkout@v3
       - name: Log in to the Container registry
         uses: docker/login-action@master
         with:
