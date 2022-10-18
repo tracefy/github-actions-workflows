@@ -15,10 +15,10 @@ on:
         description: 'some description'
         required: true
       GH_PA_TOKEN:
-        description: 'some description'
+        description: 'Personal access token'
         required: true
       GH_PA_USER:
-        description: 'some description'
+        description: 'Username connected to access token'
         required: true
 jobs:
   clean:
