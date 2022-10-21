@@ -33,7 +33,7 @@ jobs:
       - clean
     runs-on: [ self-hosted ]
     steps:
-      - uses: webfactory/ssh-agent@v0.6.0
+      - uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.ssh_private_key }}
 
