@@ -9,9 +9,21 @@ on:
 jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
-  laravel-tests:
+  login-register:
     needs:
       - clean
+    runs-on: [ self-hosted ]
+    steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@master
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_PA_USER }}
+          password: ${{ secrets.GH_PA_TOKEN }}
+  laravel-tests:
+
+    needs:
+      - login-register
     container: ghcr.io/tracefy/master-disk-php:alpine-latest
     services:
       mysql:
