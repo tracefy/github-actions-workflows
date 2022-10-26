@@ -10,6 +10,8 @@ jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   login-register:
+    container: alpine
+
     needs:
       - clean
     runs-on: [ self-hosted ]
@@ -21,7 +23,6 @@ jobs:
           username: ${{ secrets.GH_PA_USER }}
           password: ${{ secrets.GH_PA_TOKEN }}
   laravel-tests:
-
     needs:
       - login-register
     container: ghcr.io/tracefy/master-disk-php:alpine-latest
