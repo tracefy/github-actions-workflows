@@ -21,7 +21,6 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.GH_PA_USER }}
           password: ${{ secrets.GH_PA_TOKEN }}
-
       - uses: actions/checkout@v3
       - name: Declare variables
         id: vars
@@ -29,22 +28,24 @@ jobs:
         run: |
           echo "##[set-output name=branch;]$(echo ${{ inputs.tag }})"
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-
       - name: Build image for commit
         if: ${{ inputs.tag == 'latest' }}
         run: |
           docker build -t ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} .
           docker push ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }}
-
       - name: Pull committed image
         if: ${{ inputs.tag != 'latest' }}
         run: docker pull ghcr.io/tracefy/${{ github.event.repository.name }}:latest
-
+      - name: Log in to the Container registry
+        uses: docker/login-action@master
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_PA_USER }}
+          password: ${{ secrets.GH_PA_TOKEN }}
       - name: Tag / push image
         run: |
           docker tag ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }}
           docker push ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }}
-
       - name: Tag / push child images
         if: ${{ inputs.tag != 'latest' }}
         run: |
