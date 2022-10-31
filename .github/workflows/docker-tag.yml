@@ -35,10 +35,11 @@ jobs:
         run: |
           docker build -t ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} .
           docker push ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }}
+          docker tag ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} ghcr.io/tracefy/${{ github.event.repository.name }}:latest
 
       - name: Pull committed image
         if: ${{ inputs.tag != 'latest' }}
-        run: docker pull ghcr.io/tracefy/${{ github.event.repository.name }}:latest
+        run: docker pull ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }}
 
       - name: Log in to the Container registry
         uses: docker/login-action@master
@@ -48,7 +49,7 @@ jobs:
           password: ${{ secrets.GH_PA_TOKEN }}
       - name: Tag / push image
         run: |
-          docker tag ghcr.io/tracefy/${{ github.event.repository.name }}:latest ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }}
+          docker tag ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }}
           docker push ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }}
 
       - name: Tag / push child images
