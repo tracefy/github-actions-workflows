@@ -40,6 +40,12 @@ jobs:
         if: ${{ inputs.tag != 'latest' }}
         run: docker pull ghcr.io/tracefy/${{ github.event.repository.name }}:latest
 
+      - name: Log in to the Container registry
+        uses: docker/login-action@master
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_PA_USER }}
+          password: ${{ secrets.GH_PA_TOKEN }}
       - name: Tag / push image
         run: |
           docker tag ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }}
