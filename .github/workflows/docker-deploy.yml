@@ -23,10 +23,6 @@ on:
       GH_PA_USER:
         description: 'some description'
         required: true
-#      GITLAB_DEPLOY_TOKEN:
-#        description: 'some description'
-#        required: true
-
 env:
   SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}/ssh_agent.sock
 jobs:
@@ -39,17 +35,10 @@ jobs:
     runs-on: [ self-hosted ]
     steps:
       - name: Login to register AWS
-        run: |
-    
-          ssh ${{ secrets.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
-
+        run: ssh ${{ secrets.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
       - name: Tag version
         run: echo "${{ inputs.tag }}"
-#      - name: Login to registry GitLab
-#        run: ssh ${{ secrets.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
-
       - name: Github docker login
         run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
-
       - name: Deploy container
         run: ssh ${{ secrets.host }} 'sudo docker service update --image=ghcr.io/tracefy/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
