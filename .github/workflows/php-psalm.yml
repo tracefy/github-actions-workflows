@@ -10,12 +10,10 @@ jobs:
     needs:
       - clean
     name: psalm
+    container:
+      image: ghcr.io/tracefy/php-ci-container:alpine-latest
     runs-on: [ self-hosted ]
     steps:
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.1'
       - name: Git checkout
         uses: actions/checkout@v3
       - name: Install Dependencies

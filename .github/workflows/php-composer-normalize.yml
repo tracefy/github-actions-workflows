@@ -11,14 +11,10 @@ jobs:
       - clean
     runs-on: [ self-hosted ]
     container:
-      image:  ghcr.io/tracefy/php-ci-container:alpine-latest
+      image: ghcr.io/tracefy/php-ci-container:alpine-latest
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
-#      - name: Setup PHP
-#        uses: shivammathur/setup-php@v2
-#        with:
-#          php-version: '8.1'
       - name: normalize composer.json
         run: |
           ${{ secrets.PACKAGIST_SET_CONFIG}}
