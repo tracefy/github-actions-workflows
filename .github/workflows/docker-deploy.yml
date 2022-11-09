@@ -34,8 +34,6 @@ jobs:
       - clean
     runs-on: [ self-hosted ]
     steps:
-      - name: Login to register AWS
-        run: ssh ${{ secrets.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
       - name: Tag version
         run: echo "${{ inputs.tag }}"
       - name: Github docker login
