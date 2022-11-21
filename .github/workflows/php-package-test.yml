@@ -1,12 +1,12 @@
+name: CI Test php packages
+
 on:
   workflow_call:
 
 jobs:
   clean:
-    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@v1
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   laravel-tests:
-    container:
-        image: ghcr.io/tracefy/php-ci-container:alpine-latest
     needs:
       - clean
     runs-on: [ self-hosted ]
@@ -21,6 +21,10 @@ jobs:
         ports:
           - 3306
     steps:
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
       - uses: actions/checkout@v3
       - name: Install Dependencies
         run: |
