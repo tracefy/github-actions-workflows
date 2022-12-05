@@ -7,6 +7,11 @@ jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   laravel-tests:
+    strategy:
+      matrix:
+        php: [8.1, 8.2]
+    name: P${{ matrix.php }}
+
     needs:
       - clean
     runs-on: [ self-hosted ]
