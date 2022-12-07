@@ -5,16 +5,6 @@ on:
 
 jobs:
   build:
-    services:
-      mysql:
-        image: mariadb:10.5
-        env:
-          MYSQL_USER: mysql
-          MYSQL_PASSWORD: mysql
-          MYSQL_DATABASE: api
-          MYSQL_ROOT_PASSWORD: mysql
-        ports:
-          - 3306
     runs-on: [ self-hosted ]
     steps:
       - uses: actions/checkout@v3
@@ -32,10 +22,6 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      - name: Setup config
-        run: |
-          [[ -e config_test.yml ]] && cp config_test.yml config.yml
-          ls
       - name: Test with pytest
         run: |
           pytest
