@@ -35,6 +35,7 @@ jobs:
       - name: Setup config
         run: |
           [[ -e config_test.yml ]] && cp config_test.yml config.yml
+          ls
       - name: Test with pytest
         run: |
           pytest
