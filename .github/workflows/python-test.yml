@@ -5,6 +5,16 @@ on:
 
 jobs:
   build:
+    services:
+      mysql:
+        image: mariadb:10.5
+        env:
+          MYSQL_USER: mysql
+          MYSQL_PASSWORD: mysql
+          MYSQL_DATABASE: api
+          MYSQL_ROOT_PASSWORD: mysql
+        ports:
+          - 3306
     runs-on: [ self-hosted ]
     steps:
       - uses: actions/checkout@v3
