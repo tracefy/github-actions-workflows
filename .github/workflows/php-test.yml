@@ -38,7 +38,11 @@ jobs:
           php-version: ${{ inputs.php-version }}
       - uses: actions/checkout@v3
       - name: Copy .env
-        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+        run: |
+          php -r "file_exists('.env') || copy('.env.example', '.env');"
+          awk '{sub(/3306/,"${{ job.services.mysql.ports[3306] }}")}1' .env > temp.txt && mv temp.txt .env
+          rm -rf temp.txt
+
 
       - name: Install Dependencies
         run: |
