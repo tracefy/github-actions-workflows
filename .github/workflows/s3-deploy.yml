@@ -27,11 +27,25 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
 
+      - name: Add NPMRC
+        run: 'echo "$NPMRC" > .npmrc'
+        shell: bash
+        env:
+          NPMRC: ${{secrets.NPMRC}}
+
+      - name: Add env
+        run: 'echo "$ENV" > .env'
+        shell: bash
+        env:
+          ENV: ${{secrets.ENV}}
+
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install -g pnpm
+          pnpm install --no-frozen-lockfile
 
       - name: Build
-        run: npm run export
+        run: pnpm run export
 
       - name: Deploy
         uses: lbertenasco/s3-deploy@v1

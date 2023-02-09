@@ -19,7 +19,6 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: 'npm'
 
-      - name : Compile app
-        run: |
-          npm ci
-          npm run test
+      - run: npm install -g pnpm
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm run test:ci
