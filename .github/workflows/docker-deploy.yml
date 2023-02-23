@@ -36,13 +36,7 @@ jobs:
       - uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.ssh_private_key }}
-
-      - name: Login to registery AWS
-        run: ssh ${{ secrets.host }} 'sudo /usr/local/bin/aws ecr get-login-password --region eu-central-1 | sudo docker login --username AWS --password-stdin ${{ secrets.REGISTRY }}'
-
-      - name: Login to registry GitLab
-        run: ssh ${{ secrets.host }} 'echo ${{ secrets.GITLAB_DEPLOY_TOKEN }} | sudo docker login registry.gitlab.com -u docker --password-stdin'
-
+      - name: Login 
       - name: Github docker login
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
