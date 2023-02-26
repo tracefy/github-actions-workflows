@@ -7,7 +7,7 @@ jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs:
       - clean
     services:
