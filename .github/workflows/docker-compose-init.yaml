@@ -1,0 +1,42 @@
+name: Docker compose init
+
+on:
+  workflow_call:
+    secrets:
+      HOST:
+        required: true
+      IP:
+        required: true
+      SSH_PRIVATE_KEY:
+        required: true
+
+env:
+  SSH_AUTH_SOCK: /tmp/init/${{ github.event.repository.name }}/ssh_agent.sock
+jobs:
+  clean:
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
+
+  deploy:
+    needs:
+      - clean
+    runs-on: [ self-hosted ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-auth-sock: /tmp/ssh_agent.sock
+
+      - name: Kill all containers and leave
+        run: |
+          ssh ${{ secrets.HOST }} 'sudo docker container kill $(sudo docker container ls -q) || true' 
+          ssh ${{ secrets.HOST }} 'sudo docker stack rm default --force || true'
+          ssh ${{ secrets.HOST }} 'sudo docker swarm leave --force || true'
+          ssh ${{ secrets.HOST }} 'sudo docker system prune -a --force'
+          ssh ${{ secrets.HOST }} 'sudo systemctl restart docker.service'
+
+      - name: Create a fresh swarm
+        run: ssh ${{ secrets.HOST }} 'sudo docker swarm init --advertise-addr ${{ secrets.IP }} --force-new-cluster'
+
+      - name: Remove all old secrets
+        run: ssh ${{ secrets.HOST }} 'sudo docker secret rm $(sudo docker secret ls -q) || true'
