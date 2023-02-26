@@ -1,0 +1,61 @@
+name: Deploy
+
+on:
+  workflow_call:
+    secrets:
+      HOST:
+        required: true
+      SSH_PRIVATE_KEY:
+        required: true
+
+env:
+  SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
+jobs:
+  clean:
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@v1
+
+  deploy:
+    needs:
+      - clean
+    runs-on: [ self-hosted ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-auth-sock: /tmp/ssh_agent.sock
+
+      - name: Copy the haproxy file Tracefy user
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          scp -r ./etc/haproxy/haproxy.cfg ${{ secrets.HOST }}:/home/tracefy/haproxy.cfg    
+
+      - name: Backup haproxy file
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh ${{ secrets.HOST }} 'sudo \cp /etc/haproxy/haproxy.cfg /etc/haproxy/backup-haproxy.cfg'
+
+      - name: Move haproxy file to correct location
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh ${{ secrets.HOST }} 'sudo \cp /home/tracefy/haproxy.cfg /etc/haproxy/haproxy.cfg'
+
+      - name: Validate the new haproxy.cfg
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh ${{ secrets.HOST }} 'sudo /usr/local/sbin/haproxy -f /etc/haproxy/haproxy.cfg  -c'
+      - name: Kill haproxy
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh ${{ secrets.HOST }} 'ps -ef | grep 'haproxy' | grep -v grep | awk '{print $2}' | xargs -r kill -9'
+
+      - name: Start haproxy
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+          ssh ${{ secrets.HOST }} 'sudo /usr/local/sbin/haproxy -f /etc/haproxy/haproxy.cfg'
