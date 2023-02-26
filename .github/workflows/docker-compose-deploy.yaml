@@ -1,0 +1,39 @@
+name: Docker compose deploy
+on:
+  workflow_call:
+    secrets:
+      HOST:
+        required: true
+      GH_PA_TOKEN:
+        required: true
+      GH_PA_USER:
+        required: true
+      SSH_PRIVATE_KEY:
+        required: true
+env:
+  SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
+jobs:
+  build:
+    runs-on: [ self-hosted ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-auth-sock: /tmp/ssh_agent.sock
+      - name: Github docker login
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: ssh ${{ secrets.HOST }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
+
+      - name: Move docker compose file
+        run: |
+          scp -r ./docker-compose.yml ${{ secrets.HOST }}:/home/tracefy/docker-compose.yml
+
+      - name: Deploy
+        run: |
+          ssh -t ${{ secrets.HOST }} 'sudo docker stack deploy --with-registry-auth --compose-file /home/tracefy/docker-compose.yml --prune default'
+
+      - name: Remove docker compose file
+        run: |
+          ssh -t ${{ secrets.HOST }} 'rm /home/tracefy/docker-compose.yml'
