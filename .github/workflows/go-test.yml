@@ -26,7 +26,7 @@ jobs:
 #        run: |
 #          echo $CR_PAT | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: 1.18
 
