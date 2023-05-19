@@ -11,7 +11,7 @@ jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   tag:
-    runs-on: [ self-hosted ]
+    runs-on: [ X64 ]
     needs:
       - clean
     steps:
