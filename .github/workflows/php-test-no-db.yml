@@ -1,0 +1,56 @@
+name: CI Test
+
+on:
+  workflow_call:
+    inputs:
+      php-version:
+        required: true
+        type: string
+        default: "8.1"
+
+
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  clean:
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
+  laravel-tests:
+    needs:
+      - clean
+    services:
+      mysql:
+        image: mariadb:10.5
+        env:
+          MYSQL_USER: mysql
+          MYSQL_PASSWORD: mysql
+          MYSQL_DATABASE: api
+          MYSQL_ROOT_PASSWORD: mysql
+        ports:
+          - 3306
+    runs-on: [ self-hosted ]
+#    container:
+#      image: ghcr.io/tracefy/php-ci-container:alpine-latest
+    steps:
+      - name: Setup PHP ${{ inputs.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ inputs.php-version }}
+      - uses: actions/checkout@v3
+      - name: Copy .env
+        run: |
+          php -r "file_exists('.env') || copy('.env.example', '.env');"
+          awk '{sub(/3306/,"${{ job.services.mysql.ports[3306] }}")}1' .env > temp.txt && mv temp.txt .env
+          rm -rf temp.txt
+          awk '{sub(/DB_HOST=mysql/,"DB_HOST=127.0.0.1")}1' .env > temp.txt && mv temp.txt .env
+          rm -rf temp.txt
+
+      - name: Install Dependencies
+        run: |
+          ${{ secrets.PACKAGIST_SET_CONFIG}}
+          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist --ignore-platform-reqs
+      - name: Directory Permissions
+        run: chmod -R 777 storage bootstrap/cache
+
+      - name: Execute tests (Unit and Feature tests) via PHPUnit
+        run: php artisan test
