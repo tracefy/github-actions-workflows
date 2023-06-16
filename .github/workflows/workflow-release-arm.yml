@@ -11,9 +11,6 @@ on:
       host:
         description: 'some description'
         required: true
-      jump_host:
-        description: 'some description'
-        required: true
       registry:
         description: 'some description'
         required: true
