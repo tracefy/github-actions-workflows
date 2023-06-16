@@ -53,7 +53,7 @@ jobs:
   deploy:
     needs:
       - tag
-    uses: tracefy/github-actions-workflows/.github/workflows/docker-deploy-jump.yml@v1
+    uses: tracefy/github-actions-workflows/.github/workflows/docker-deploy.yml@v1
     secrets:
       host: ${{ secrets.host }}
       jump_host: ${{ secrets.jump_host }}
