@@ -53,7 +53,6 @@ jobs:
     uses: tracefy/github-actions-workflows/.github/workflows/docker-deploy.yml@v1
     secrets:
       host: ${{ secrets.host }}
-      jump_host: ${{ secrets.jump_host }}
       registry: ${{ secrets.REGISTRY }}
       GH_PA_TOKEN: ${{ secrets.GH_PA_TOKEN }}
       GH_PA_USER: ${{ secrets.GH_PA_USER }}
