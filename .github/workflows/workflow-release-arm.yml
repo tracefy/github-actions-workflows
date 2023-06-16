@@ -1,0 +1,60 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        required: false
+        type: string
+        default: ${{ github.event.repository.name }}
+    secrets:
+      host:
+        description: 'some description'
+        required: true
+      registry:
+        description: 'some description'
+        required: true
+      GH_PA_TOKEN:
+        description: 'Personal access token'
+        required: true
+      GH_PA_USER:
+        description: 'Username connected to access token'
+        required: true
+jobs:
+  clean:
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@v1
+  prepare:
+    needs:
+      - clean
+    runs-on: [ self-hosted ]
+    outputs:
+      branch: ${{ steps.vars.outputs.branch }}
+      tag: ${{ steps.vars.outputs.tag }}
+      sha_short: ${{ steps.vars.outputs.sha_short }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Declare variables
+        id: vars
+        shell: bash
+        run: |
+          echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
+          echo "sha_short=git rev-parse --short HEAD" >> $GITHUB_OUTPUT
+  tag:
+    needs:
+      - prepare
+    uses: tracefy/github-actions-workflows/.github/workflows/docker-tag-arm.yml@v1
+    secrets: inherit
+    with:
+      tag: ${{ needs.prepare.outputs.tag }}
+  deploy:
+    needs:
+      - tag
+    uses: tracefy/github-actions-workflows/.github/workflows/docker-deploy.yml@v1
+    secrets:
+      host: ${{ secrets.host }}
+      registry: ${{ secrets.REGISTRY }}
+      GH_PA_TOKEN: ${{ secrets.GH_PA_TOKEN }}
+      GH_PA_USER: ${{ secrets.GH_PA_USER }}
+    with:
+      tag: ${{github.ref_name}}
