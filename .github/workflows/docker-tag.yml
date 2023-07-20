@@ -33,7 +33,7 @@ jobs:
       - name: Build image for commit
         if: ${{ inputs.tag == 'latest' || inputs.tag == 'staging' || inputs.tag == 'acceptance'}}
         run: |
-          docker buildx build -t ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} .
+          docker build -t ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} .
           docker push ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }}
           docker tag ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} ghcr.io/tracefy/${{ github.event.repository.name }}:latest
 
