@@ -1,0 +1,22 @@
+name: Deno test
+
+on:
+  workflow_call:
+    inputs:
+      deno-version:
+        required: true
+        type: string
+jobs:
+  test:
+    runs-on: self-hosted
+
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v3
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: ${{ inputs.deno-version }}
+      - name: Run linter
+        run: deno lint
