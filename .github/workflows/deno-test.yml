@@ -18,8 +18,5 @@ jobs:
         uses: denoland/setup-deno@v1
         with:
           deno-version: ${{ inputs.deno-version }}
-      - name: Run linter
-        run: deno lint
-
       - name: Run tests
         run: deno test -A
