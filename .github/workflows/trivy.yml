@@ -1,0 +1,29 @@
+name: Trivy
+on:
+  workflow_call:
+jobs:
+  build:
+    name: Build
+    runs-on: [ X64 ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Log in to the Container registry
+        uses: docker/login-action@master
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_PA_USER }}
+          password: ${{ secrets.GH_PA_TOKEN }}
+
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t ghcr.io/tracefy/${{ github.event.repository.name }}:${{ github.sha }} .
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/tracefy/${{ github.event.repository.name }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
