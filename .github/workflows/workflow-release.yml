@@ -26,7 +26,7 @@ jobs:
   prepare:
     needs:
       - clean
-    runs-on: [ self-hosted ]
+    runs-on: [ X64 ]
     outputs:
       branch: ${{ steps.vars.outputs.branch }}
       tag: ${{ steps.vars.outputs.tag }}
