@@ -37,7 +37,7 @@ jobs:
         if: ${{ inputs.tag != 'latest' }}
         run: docker pull ghcr.io/tracefy/${{ github.event.repository.name }}:latest
       - name: Log in to the Container registry
-        uses: docker/login-action@master
+        uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ secrets.GH_PA_USER }}
