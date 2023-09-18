@@ -21,7 +21,7 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.GH_PA_USER }}
           password: ${{ secrets.GH_PA_TOKEN }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Declare variables
         id: vars
         shell: bash
