@@ -31,6 +31,8 @@ jobs:
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
       - name: Build image for commit
+        env:
+            GITHUB_PAT: ${{ secrets.GH_PA_TOKEN }}
         if: ${{ inputs.tag == 'latest' || inputs.tag == 'staging' || inputs.tag == 'acceptance'}}
         run: |
           docker build -t ghcr.io/tracefy/${{ github.event.repository.name }}:${{ steps.vars.outputs.sha_short }} .
