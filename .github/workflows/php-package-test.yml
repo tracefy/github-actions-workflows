@@ -9,7 +9,7 @@ jobs:
   laravel-tests:
     needs:
       - clean
-    runs-on: [ self-hosted, x64 ]
+    runs-on: [ self-hosted ]
     services:
       mysql:
         image: mariadb:10.5
