@@ -24,6 +24,7 @@ on:
 
 env:
   SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
+
 jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
@@ -36,11 +37,26 @@ jobs:
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ssh_private_key }}
-      - name: Login 
+
       - name: Github docker login
+        run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-        run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
 
-      - name: Deploy container
-        run: ssh ${{ secrets.host }} 'sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
+      - name: Debug - Check Docker Swarm status
+        run: ssh ${{ secrets.host }} 'docker info'
+      
+      - name: Debug - List Docker services
+        run: ssh ${{ secrets.host }} 'sudo docker service ls'
+      
+      - name: Debug - Check specific Docker service status
+        run: ssh ${{ secrets.host }} 'sudo docker service inspect default_${{ inputs.service }} || echo "Service not found"'
+        
+      - name: Deploy or Create container
+        run: |
+          ssh ${{ secrets.host }} '
+          if sudo docker service ls | grep -q "default_${{ inputs.service }}"; then
+            sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}
+          else
+            sudo docker service create --name default_${{ inputs.service }} --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --endpoint-mode vip --replicas 1 --publish published=80,target=80
+          fi'
