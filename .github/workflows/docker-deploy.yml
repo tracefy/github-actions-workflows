@@ -51,7 +51,16 @@ jobs:
       
       - name: Debug - Check specific Docker service status
         run: ssh ${{ secrets.host }} 'sudo docker service inspect default_${{ inputs.service }} || echo "Service not found"'
-        
+
+      - name: Debug - Check Docker version
+        run: ssh ${{ secrets.host }} 'docker --version'
+
+      - name: Debug - Check available disk space
+        run: ssh ${{ secrets.host }} 'df -h'
+      
+      - name: Debug - List Docker containers
+        run: ssh ${{ secrets.host }} 'docker ps -a'
+
       - name: Deploy or Create container
         run: |
           ssh ${{ secrets.host }} '
