@@ -49,14 +49,21 @@ jobs:
       - name: Debug - List Docker services
         run: ssh ${{ secrets.host }} 'sudo docker service ls'
       
-      - name: Debug - Check specific Docker service status
-        run: ssh ${{ secrets.host }} 'sudo docker service inspect default_${{ inputs.service }} || echo "Service not found"'
-        
-      - name: Deploy or Create container
+      - name: Check if service exists
+        id: check_service
         run: |
-          ssh ${{ secrets.host }} '
-          if sudo docker service ls | grep -q "default_${{ inputs.service }}"; then
-            sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}
+          if ssh ${{ secrets.host }} 'sudo docker service ls | grep -q "default_${{ inputs.service }}"'; then
+            echo "SERVICE_EXISTS=true" >> $GITHUB_ENV
           else
-            sudo docker service create --name default_${{ inputs.service }} --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --endpoint-mode vip --replicas 1 --publish published=80,target=80
-          fi'
+            echo "SERVICE_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Update or Create service
+        run: |
+          if [ "${{ env.SERVICE_EXISTS }}" = "true" ]; then
+            echo "Updating existing service"
+            ssh ${{ secrets.host }} 'sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
+          else
+            echo "Creating new service"
+            ssh ${{ secrets.host }} 'sudo docker service create --name default_${{ inputs.service }} --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --endpoint-mode vip --replicas 1 --publish published=80,target=80'
+          fi
