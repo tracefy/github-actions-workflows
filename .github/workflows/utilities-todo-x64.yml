@@ -3,7 +3,7 @@ on:
   workflow_call:
 jobs:
   build:
-    runs-on: [self-hosted,x86]
+    runs-on: [self-hosted,x64]
     steps:
       - uses: actions/checkout@v4
       - name: Run tdg-github-action
