@@ -3,7 +3,7 @@ on:
   workflow_call:
 jobs:
   cleanup:
-    runs-on: [self-hosted, X64']
+    runs-on: [self-hosted, X64]
     container:
       image: ubuntu:latest
     steps:
