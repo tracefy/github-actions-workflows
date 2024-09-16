@@ -61,5 +61,6 @@ jobs:
       - name: list docker images
         run: docker image ls
 
-      - name: ./.github/actions/clean.yml
+      - name: cleanup
+        uses: ./.github/actions/clean.yml
         if: always()
