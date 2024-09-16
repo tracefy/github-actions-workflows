@@ -18,7 +18,7 @@ on:
         required: true
 
 env:
-  REGISTRY_NAME: ghcr.io/tracefy/${{ github.event.repository_name }}
+  REGISTRY_NAME: ghcr.io/tracefy/${{ github.event.repository.name }}
 
 jobs:
   prepare:
