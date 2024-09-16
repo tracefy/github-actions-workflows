@@ -3,9 +3,6 @@ name: CI Test
 on:
   workflow_call:
 
-  pull_request:
-    branches: [ "master" ]
-
 jobs:
   clean:
     uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
@@ -45,7 +42,7 @@ jobs:
         run: |
           ${{ secrets.PACKAGIST_SET_CONFIG}}
           composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist --ignore-platform-reqs
-          
+
       - name: Wait for MySQL to be ready
         run: |
           while ! mysqladmin ping -h127.0.0.1 --silent; do
