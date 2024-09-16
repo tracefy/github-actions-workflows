@@ -132,8 +132,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_NAME }}
+          flavor: latest=false
           tags: |
-            type=raw,value=latest,enable=${{ !inputs.disable-latest }}
+            type=raw,value=latest,enable=${{ !inputs.disable-latest && github.event.pull_request.merged }}
             type=raw,value={{base_ref}}-{{sha}}-{{date 'YYYYMMDDHHmm'}},enable=${{ github.event_name == 'pull_request' }}
             type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
             type=semver,pattern={{version}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
