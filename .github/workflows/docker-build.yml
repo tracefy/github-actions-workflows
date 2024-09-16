@@ -92,7 +92,7 @@ jobs:
         run: |
           mkdir -p "${DIGESTS_DIRECTORY}"
           digest='${{ steps.build.outputs.digest }}'
-          touch "./digests/${digest#sha256:}"
+          touch "${DIGESTS_DIRECTORY}/${digest#sha256:}"
 
       - name: upload digest
         uses: actions/upload-artifact@v4
