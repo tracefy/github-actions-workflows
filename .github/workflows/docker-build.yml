@@ -129,10 +129,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY_NAME }}
           tags: |
-            type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tags, '.') }}
-            type=semver,pattern={{version}},value=${{ inputs.tag }},enable=${{ contains(inputs.tags, '.') }}
-            type=semver,pattern={{major}},value=${{ inputs.tag }},enable=${{ contains(inputs.tags, '.') && !(startsWith(inputs.tags, '0.') || startsWith(inputs.tags, 'v0.')) }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},enable=${{ contains(inputs.tags, '.') && !(startsWith(inputs.tags, '0.') || startsWith(inputs.tags, 'v0.')) }}
+            type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
+            type=semver,pattern={{version}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
+            type=semver,pattern={{major}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') && !startsWith(inputs.tag, '0.') && !startsWith(inputs.tag, 'v0.') }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') && !startsWith(inputs.tag, '0.') && !startsWith(inputs.tag, 'v0.') }}
             type=sha,enable=true,prefix=,suffix=,format=short
 
       - name: create manifest list and push
