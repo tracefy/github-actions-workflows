@@ -18,14 +18,36 @@ on:
         required: true
 
 jobs:
+  prepare:
+    runs-on: [self-hosted]
+    outputs:
+      platforms: ${{ steps.vars.outputs.platforms }}
+    steps:
+      - name: set variables
+        id: vars
+        shell: bash
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X86" else "ARM64" end)})')
+          echo "platforms=${data}" >> $GITHUB_OUTPUT
+      - name: cleanup
+        uses: tracefy/github-actions-workflows/.github/actions/clean@multi-arch-builds
+        if: always()
+
+
   build:
-    runs-on: [self-hosted, ARM64]
+    runs-on: [self-hosted, "${{ matrix.platform.runner }}"]
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
 
       - name: setup qemu
-        if: ${{ contains(inputs.platforms, ',') || !contains(inputs.platforms, 'linux/arm64') }}
         uses: docker/setup-qemu-action@v3
 
       - name: setup buildx
@@ -53,7 +75,7 @@ jobs:
       - name: build and push
         uses: docker/build-push-action@v6
         with:
-          platforms: ${{ inputs.platforms }}
+          platforms: ${{ matrix.platform.name }}
           push: ${{ inputs.push }}
           tags: ${{ steps.meta.outputs.tags }}
 
