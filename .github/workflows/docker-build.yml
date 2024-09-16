@@ -55,12 +55,8 @@ jobs:
         with:
           platforms: ${{ inputs.platforms }}
           push: ${{ inputs.push }}
-          load: ${{ !inputs.push }}
           tags: ${{ steps.meta.outputs.tags }}
 
-      - name: list docker images
-        run: docker image ls
-
       - name: cleanup
-        uses: ./.github/actions/clean.yml
+        uses: tracefy/github-actions-workflows/.github/actions/clean.yml
         if: always()
