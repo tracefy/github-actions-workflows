@@ -1,9 +1,10 @@
-name: Clean
+name: clean
 on:
   workflow_call:
+
 jobs:
   cleanup:
-    runs-on: self-hosted
+    runs-on: [self-hosted, ARM64]
     container:
       image: ubuntu:latest
     steps:

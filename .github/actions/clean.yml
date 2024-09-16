@@ -1,0 +1,10 @@
+name: clean
+description: clean github workspace
+runs:
+  using: composite
+  steps:
+  - name: clean
+    shell: bash
+    run: |
+      echo "cleaning up working directory..."
+      rm -rf ./* ./.[!.]*
