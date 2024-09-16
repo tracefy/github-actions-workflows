@@ -68,7 +68,7 @@ jobs:
       - name: set variables
         id: vars
         run: |
-          echo "artfiact=digest-$(echo '${{ matrix.platform.name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
+          echo "artifact=digest-$(echo '${{ matrix.platform.name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
 
       - name: docker metadata
         id: meta
