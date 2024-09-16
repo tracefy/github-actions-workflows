@@ -12,6 +12,9 @@ on:
       push:
         type: boolean
         default: true
+      disable-latest:
+        type: boolean
+        default: false
     secrets:
       token:
         description: The GITHUB_TOKEN used for authenticating to ghcr.io
@@ -19,6 +22,7 @@ on:
 
 env:
   REGISTRY_NAME: ghcr.io/tracefy/${{ github.event.repository.name }}
+  DIGESTS_DIRECTORY: ./digests
 
 jobs:
   prepare:
@@ -86,7 +90,7 @@ jobs:
 
       - name: export digests
         run: |
-          mkdir -p ./digests
+          mkdir -p "${DIGESTS_DIRECTORY}"
           digest='${{ steps.build.outputs.digest }}'
           touch "./digests/${digest#sha256:}"
 
@@ -94,7 +98,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.vars.outputs.artifact }}
-          path: ./digests/*
+          path: ${{ env.DIGESTS_DIRECTORY }}/*
           if-no-files-found: error
           retention-days: 1
 
@@ -109,7 +113,7 @@ jobs:
       - name: download digests
         uses: actions/download-artifact@v4
         with:
-          path: ./digests
+          path: ${{ env.DIGESTS_DIRECTORY }}
           pattern: digests-*
           merge-multiple: true
 
@@ -129,10 +133,12 @@ jobs:
         with:
           images: ${{ env.REGISTRY_NAME }}
           tags: |
+            type=raw,value=latest,enable=${{ !inputs.disable-latest }}
+            type=raw,value={{base_ref}}-{{sha}}-{{date 'YYYYMMDDHHmm'}},enable=${{ github.event_name == 'pull_request' }}
             type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
             type=semver,pattern={{version}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
-            type=semver,pattern={{major}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') && !startsWith(inputs.tag, '0.') && !startsWith(inputs.tag, 'v0.') }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') && !startsWith(inputs.tag, '0.') && !startsWith(inputs.tag, 'v0.') }}
+            type=semver,pattern={{major}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
             type=sha,enable=true,prefix=,suffix=,format=short
 
       - name: create manifest list and push
@@ -144,3 +150,7 @@ jobs:
       - name: inspect image
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_NAME }}:${{ steps.meta.outputs.version }}
+
+      - name: cleanup
+        uses: tracefy/github-actions-workflows/.github/actions/clean@multi-arch-builds
+        if: always()
