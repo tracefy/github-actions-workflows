@@ -29,7 +29,7 @@ jobs:
         env:
           PLATFORMS: ${{ inputs.platforms }}
         run: |
-          data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X86" else "ARM64" end)})')
+          data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X64" else "ARM64" end)})')
           echo "platforms=${data}" >> $GITHUB_OUTPUT
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@multi-arch-builds
