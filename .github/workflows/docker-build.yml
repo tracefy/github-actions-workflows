@@ -110,6 +110,7 @@ jobs:
 
   push:
     runs-on: self-hosted
+    if: ${{ inputs.push }}
     needs: build
     steps:
       - name: download digests
@@ -146,7 +147,7 @@ jobs:
       - name: create manifest list and push
         working-directory: ${{ env.DIGESTS_DIRECTORY }}
         run: |
-          docker buildx imagetools create --dry-run $(jq -cr '.tags | unique | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create $(jq -cr '.tags | unique | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_NAME }}@sha256:%s ' *)
 
       - name: inspect image
