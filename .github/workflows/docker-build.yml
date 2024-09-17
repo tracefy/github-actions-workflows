@@ -1,0 +1,159 @@
+name: build and push image
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+      platforms:
+        type: string
+        default: linux/arm64
+      push:
+        type: boolean
+        default: true
+      disable-latest:
+        type: boolean
+        default: false
+    secrets:
+      token:
+        description: The GITHUB_TOKEN used for authenticating to ghcr.io
+        required: true
+
+env:
+  REGISTRY_NAME: ghcr.io/tracefy/${{ github.event.repository.name }}
+  DIGESTS_DIRECTORY: ./${{ github.sha }}/digests
+
+jobs:
+  prepare:
+    runs-on: [self-hosted]
+    outputs:
+      platforms: ${{ steps.vars.outputs.platforms }}
+    steps:
+      - name: set variables
+        id: vars
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X64" else "ARM64" end)})')
+          echo "platforms=${data}" >> $GITHUB_OUTPUT
+      - name: cleanup
+        uses: tracefy/github-actions-workflows/.github/actions/clean@master
+        if: always()
+
+
+  # https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners
+  # modified to also use appropiate runner depending on architecture/platform
+  # if no runner exists that for the platform, then it defaults to using qemu on a arm64 runner
+  build:
+    runs-on: [self-hosted, "${{ matrix.platform.runner }}"]
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup qemu
+        uses: docker/setup-qemu-action@v3
+
+      - name: setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: login to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.token }}
+
+      - name: set variables
+        id: vars
+        run: |
+          echo "artifact=digests-$(echo '${{ matrix.platform.name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
+
+      - name: docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_NAME }}
+
+      - name: build image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          platforms: ${{ matrix.platform.name }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY_NAME }},push_by_digest=true,name-canonical=true,push=${{ inputs.push }}
+
+      - name: export digests
+        run: |
+          mkdir -p "${DIGESTS_DIRECTORY}"
+          digest='${{ steps.build.outputs.digest }}'
+          touch "${DIGESTS_DIRECTORY}/${digest#sha256:}"
+
+      # not possible to use output with matrix in this case
+      # https://github.com/orgs/community/discussions/26639
+      - name: upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.vars.outputs.artifact }}
+          path: ${{ env.DIGESTS_DIRECTORY }}/*
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: cleanup
+        uses: tracefy/github-actions-workflows/.github/actions/clean@master
+        if: always()
+
+  push:
+    runs-on: self-hosted
+    if: ${{ inputs.push }}
+    needs: build
+    steps:
+      - name: download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ env.DIGESTS_DIRECTORY }}
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: login to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.token }}
+
+      - name: docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ !inputs.disable-latest && github.event.pull_request.merged }}
+            type=raw,value={{base_ref}}-{{sha}}-{{date 'YYYYMMDDHHmm'}},enable=${{ github.event_name == 'pull_request' }}
+            type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
+            type=semver,pattern={{version}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
+            type=semver,pattern={{major}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
+            type=sha,enable=true,prefix=,suffix=,format=short
+
+      - name: create manifest list and push
+        working-directory: ${{ env.DIGESTS_DIRECTORY }}
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | unique | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY_NAME }}@sha256:%s ' *)
+
+      - name: inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY_NAME }}:${{ steps.meta.outputs.version }}
+
+      - name: cleanup
+        uses: tracefy/github-actions-workflows/.github/actions/clean@master
+        if: always()
