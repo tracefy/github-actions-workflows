@@ -15,8 +15,8 @@ on:
     secrets:
       ssh_host:
         required: true
-      ssh_private_key:
-        required: true
+      # ssh_private_key:
+      #   required: true
       token:
         description: The GITHUB_TOKEN used for authenticating to ghcr.io
         required: true
@@ -28,11 +28,6 @@ jobs:
       REGISTRY_NAME: ghcr.io/tracefy
       SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}/ssh_agent.sock
     steps:
-      # - name: setup ssh-agent
-      #   uses: webfactory/ssh-agent@v0.9.0
-      #   with:
-      #     ssh-private-key: ${{ secrets.ssh_private_key }}
-
       - name: login to container registry
         run: |
           ssh ${{ secrets.ssh_host }} 'sudo su -c \
