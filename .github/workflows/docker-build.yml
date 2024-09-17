@@ -38,7 +38,7 @@ jobs:
           data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X64" else "ARM64" end)})')
           echo "platforms=${data}" >> $GITHUB_OUTPUT
       - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@multi-arch-builds
+        uses: tracefy/github-actions-workflows/.github/actions/clean@master
         if: always()
 
 
@@ -105,7 +105,7 @@ jobs:
           retention-days: 1
 
       - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@multi-arch-builds
+        uses: tracefy/github-actions-workflows/.github/actions/clean@master
         if: always()
 
   push:
@@ -155,5 +155,5 @@ jobs:
           docker buildx imagetools inspect ${{ env.REGISTRY_NAME }}:${{ steps.meta.outputs.version }}
 
       - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@multi-arch-builds
+        uses: tracefy/github-actions-workflows/.github/actions/clean@master
         if: always()
