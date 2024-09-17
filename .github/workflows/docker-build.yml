@@ -132,7 +132,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_NAME }}
-          flavor: latest=false
           tags: |
             type=raw,value=latest,enable=${{ !inputs.disable-latest && github.event.pull_request.merged }}
             type=raw,value={{base_ref}}-{{sha}}-{{date 'YYYYMMDDHHmm'}},enable=${{ github.event_name == 'pull_request' }}
@@ -145,7 +144,7 @@ jobs:
       - name: create manifest list and push
         working-directory: ./digests
         run: |
-          docker buildx imagetools create --dry-run $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create --dry-run $(jq -cr '.tags | unique | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_NAME }}@sha256:%s ' *)
 
       - name: inspect image
