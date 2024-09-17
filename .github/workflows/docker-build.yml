@@ -22,7 +22,7 @@ on:
 
 env:
   REGISTRY_NAME: ghcr.io/tracefy/${{ github.event.repository.name }}
-  DIGESTS_DIRECTORY: ./${{ env.GITHUB_SHA }}/digests
+  DIGESTS_DIRECTORY: ./${{ github.sha }}/digests
 
 jobs:
   prepare:
