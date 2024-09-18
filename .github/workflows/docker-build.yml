@@ -24,6 +24,10 @@ env:
   REGISTRY_NAME: ghcr.io/tracefy/${{ github.event.repository.name }}
   DIGESTS_DIRECTORY: ./${{ github.sha }}/digests
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   prepare:
     runs-on: [self-hosted]
