@@ -3,8 +3,13 @@ description: clean github workspace
 runs:
   using: composite
   steps:
+  - name: list files
+    shell: bash
+    run: ls -a
+
   - name: clean
     shell: bash
     run: |
       echo "cleaning up working directory..."
-      rm -rf ./* ./.[!.]*
+      sudo rm -rf ./* ./.[!.]*
+      ls -a

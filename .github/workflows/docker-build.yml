@@ -42,7 +42,7 @@ jobs:
           data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X64" else "ARM64" end)})')
           echo "platforms=${data}" >> $GITHUB_OUTPUT
       - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@master
+        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
         if: always()
 
 
@@ -62,13 +62,14 @@ jobs:
 
       - name: set temporary docker config
         run: |
-          mkdir -p "$PWD/${{ env.GITHUB_RUN_ID }}/.docker"
-          echo "DOCKER_CONFIG=$PWD/${{ env.GITHUB_RUN_ID }}/.docker" >> $GITHUB_ENV
+          mkdir -p "$PWD/${{ github.run_id }}/.docker"
+          echo "DOCKER_CONFIG=$PWD/${{ github.run_id }}/.docker" >> $GITHUB_ENV
 
       - name: setup qemu
         uses: docker/setup-qemu-action@v3
 
       - name: setup buildx
+        id: buildx
         uses: docker/setup-buildx-action@v3
 
       - name: login to container registry
@@ -93,6 +94,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
+          builder: ${{ steps.buildx.outputs.name }}
           platforms: ${{ matrix.platform.name }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY_NAME }},push_by_digest=true,name-canonical=true,push=${{ inputs.push }}
@@ -114,7 +116,7 @@ jobs:
           retention-days: 1
 
       - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@master
+        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
         if: always()
 
   push:
@@ -131,8 +133,8 @@ jobs:
 
       - name: set temporary docker config
         run: |
-          mkdir -p "$PWD/${{ env.GITHUB_RUN_ID }}/.docker"
-          echo "DOCKER_CONFIG=$PWD/${{ env.GITHUB_RUN_ID }}/.docker" >> $GITHUB_ENV
+          mkdir -p "$PWD/${{ github.run_id }}/.docker"
+          echo "DOCKER_CONFIG=$PWD/${{ github.run_id }}/.docker" >> $GITHUB_ENV
 
       - name: setup buildx
         uses: docker/setup-buildx-action@v3
@@ -150,7 +152,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY_NAME }}
           tags: |
-            type=raw,value=latest,enable=${{ !inputs.disable-latest && github.event.pull_request.merged }}
+            type=raw,value=latest,enable=${{ inputs.disable-latest == false }}
             type=raw,value={{base_ref}}-{{sha}}-{{date 'YYYYMMDDHHmm'}},enable=${{ github.event_name == 'pull_request' }}
             type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
             type=semver,pattern={{version}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
@@ -169,5 +171,5 @@ jobs:
           docker buildx imagetools inspect ${{ env.REGISTRY_NAME }}:${{ steps.meta.outputs.version }}
 
       - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@master
+        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
         if: always()
