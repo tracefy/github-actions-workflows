@@ -17,9 +17,10 @@ on:
         required: true
       # ssh_private_key:
       #   required: true
-      token:
-        description: The GITHUB_TOKEN used for authenticating to ghcr.io
-        required: true
+
+permissions:
+  content: read
+  packages: read
 
 jobs:
   deploy:
@@ -31,7 +32,7 @@ jobs:
       - name: login to container registry
         run: |
           ssh ${{ secrets.ssh_host }} 'sudo su -c \
-            "echo ${{ secrets.token }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin"'
+            "echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin"'
 
       - name: update service
         if: ${{ inputs.skip_update == false }}
