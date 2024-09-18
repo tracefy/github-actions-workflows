@@ -60,6 +60,11 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
+      - name: set temporary docker config
+        run: |
+          mkdir -p "$PWD/${{ env.GITHUB_RUN_ID }}/.docker"
+          echo "DOCKER_CONFIG=$PWD/${{ env.GITHUB_RUN_ID }}/.docker" >> $GITHUB_ENV
+
       - name: setup qemu
         uses: docker/setup-qemu-action@v3
 
@@ -123,6 +128,11 @@ jobs:
           path: ${{ env.DIGESTS_DIRECTORY }}
           pattern: digests-*
           merge-multiple: true
+
+      - name: set temporary docker config
+        run: |
+          mkdir -p "$PWD/${{ env.GITHUB_RUN_ID }}/.docker"
+          echo "DOCKER_CONFIG=$PWD/${{ env.GITHUB_RUN_ID }}/.docker" >> $GITHUB_ENV
 
       - name: setup buildx
         uses: docker/setup-buildx-action@v3
