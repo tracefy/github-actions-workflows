@@ -1,69 +1,54 @@
-name: Deploy
+name: deploy
 
 on:
   workflow_call:
     inputs:
       tag:
-        required: true
         type: string
-
+        required: true
       service:
-        required: false
         type: string
         default: ${{ github.event.repository.name }}
-
+      skip_update:
+        type: boolean
+        default: false
     secrets:
-      host:
+      ssh_host:
         required: true
-
-      ssh_private_key:
+      # ssh_private_key:
+      #   required: true
+      token:
+        description: The GITHUB_TOKEN used for authenticating to ghcr.io
         required: true
-
-      registry:
-        required: true
-
-env:
-  SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}ssh_agent.sock
 
 jobs:
-  clean:
-    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
-
   deploy:
-    needs:
-      - clean
-    runs-on: [ self-hosted ]
+    runs-on: self-hosted
+    env:
+      REGISTRY_NAME: ghcr.io/tracefy
+      SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}/ssh_agent.sock
     steps:
-      - uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.ssh_private_key }}
-
-      - name: Github docker login
-        run: ssh ${{ secrets.host }} 'sudo su -c "echo ${{ secrets.GH_PA_TOKEN }} | docker login ghcr.io -u ${{ secrets.GH_PA_USER }} --password-stdin"'
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-
-      - name: Debug - Check Docker Swarm status
-        run: ssh ${{ secrets.host }} 'docker info'
-      
-      - name: Debug - List Docker services
-        run: ssh ${{ secrets.host }} 'sudo docker service ls'
-      
-      - name: Check if service exists
-        id: check_service
+      - name: login to container registry
         run: |
-          if ssh ${{ secrets.host }} 'sudo docker service ls | grep -q "default_${{ inputs.service }}"'; then
-            echo "SERVICE_EXISTS=true" >> $GITHUB_ENV
-          else
-            echo "SERVICE_EXISTS=false" >> $GITHUB_ENV
-          fi
+          ssh ${{ secrets.ssh_host }} 'sudo su -c \
+            "echo ${{ secrets.token }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin"'
 
-      - name: Update or Create service
+      - name: update service
+        if: ${{ inputs.skip_update == false }}
         run: |
-          if [ "${{ env.SERVICE_EXISTS }}" = "true" ]; then
-            echo "Updating existing service"
-            ssh ${{ secrets.host }} 'sudo docker service update --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --force --detach=false --update-parallelism=1 --update-delay=2s --update-failure-action=rollback --update-order=start-first default_${{ inputs.service }}'
-          else
-            echo "Creating new service"
-            ssh ${{ secrets.host }} 'sudo docker service create --name default_${{ inputs.service }} --image=${{ secrets.registry }}/${{ github.event.repository.name }}:${{ inputs.tag }} --with-registry-auth --endpoint-mode vip --replicas 1 --publish published=80,target=80'
-          fi
+          ssh ${{ secrets.ssh_host }} '
+          sudo docker service update \
+            --image=${{ env.REGISTRY_NAME }}/${{ github.event.repository.name }}:${{ inputs.tag }} \
+            --with-registry-auth \
+            --force \
+            --detach=false \
+            --update-parallelism=1 \
+            --update-delay=2s \
+            --update-failure-action=rollback \
+            --update-order=start-first \
+            default_${{ inputs.service }}'
+
+      - name: cleanup
+        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
+        if: always()
+
