@@ -149,12 +149,12 @@ jobs:
           images: ${{ env.REGISTRY_NAME }}
           tags: |
             type=raw,value=latest,enable=${{ inputs.disable-latest == false }}
-            type=raw,value={{base_ref}}-{{sha}}-{{date 'YYYYMMDDHHmm'}},enable=${{ github.event_name == 'pull_request' }}
             type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
             type=semver,pattern={{version}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
             type=semver,pattern={{major}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
             type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},enable=${{ contains(inputs.tag, '.') }}
             type=sha,enable=true,prefix=,suffix=,format=short
+            type=sha,format=short,prefix={{branch}}-,suffix=-{{date 'YYYYMMDDHHmmss'}},enable={{is_default_branch}},priority=1
 
       - name: create manifest list and push
         working-directory: ${{ env.DIGESTS_DIRECTORY }}
