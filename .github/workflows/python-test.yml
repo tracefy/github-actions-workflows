@@ -1,28 +1,40 @@
-name: CI Test
+name: ci python tests
 
 on:
   workflow_call:
+    inputs:
+      python_version:
+        default: "3.11.3"
+        type: string
 
 jobs:
   build:
     runs-on: [ self-hosted ]
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.11.3
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: set up python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11.3"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: Lint with flake8
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      - name: Test with pytest
-        run: |
-          pytest
+          python-version: ${{ inputs.python_version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
 
+      - name: install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+
+      # - name: Lint with flake8
+      #   run: |
+      #     # stop the build if there are Python syntax errors or undefined names
+      #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+      #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: tests
+        run: pytest
+
+      - name: cleanup
+        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
+        if: always()
