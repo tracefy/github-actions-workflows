@@ -15,8 +15,8 @@ on:
     secrets:
       ssh_host:
         required: true
-      # ssh_private_key:
-      #   required: true
+      ssh_private_key: # needs to be removed
+        required: false
 
 permissions:
   contents: read
