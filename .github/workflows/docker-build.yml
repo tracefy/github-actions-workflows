@@ -48,6 +48,7 @@ jobs:
     runs-on: [self-hosted]
     outputs:
       platforms: ${{ steps.vars.outputs.platforms }}
+      ecr_name: ${{ steps.vars.outputs.ecr_name }}
     steps:
       - name: assert that both ecr input vars are set
         if: ${{ (inputs.ecr-registry != '' && inputs.ecr-repository == '') || (inputs.ecr-registry == '' && inputs.ecr-repository != '') }}
@@ -62,7 +63,7 @@ jobs:
         run: |
           data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X64" else "ARM64" end)})')
           echo "platforms=${data}" >> $GITHUB_OUTPUT
-          echo "ecr-name=$ECR_REGISTRY/$ECR_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "ecr_name=$ECR_REGISTRY/$ECR_REPOSITORY" >> $GITHUB_OUTPUT
 
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2
@@ -125,14 +126,14 @@ jobs:
 
       - name: set variables
         id: vars
+        env:
+          ECR_NAME: ${{ needs.prepare.outputs.ecr_name }}
         run: |
           echo "artifact=digests-$(echo '${{ matrix.platform.name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
-          ecr_name="${{ inputs.ecr-registry }}/${{ inputs.ecr-repository }}"
-          echo "ecr_name=$ecr_name" >> $GITHUB_OUTPUT
           if [[ "${{ inputs.ecr-registry }}" != "" && "${{ inputs.ghcr-enabled }}" == "true" ]]; then
-            echo "names=\"name=${ecr_name},${REGISTRY_NAME}\"" >> $GITHUB_OUTPUT
+            echo "names=\"name=${ECR_NAME},${REGISTRY_NAME}\"" >> $GITHUB_OUTPUT
           elif [[ "${{ inputs.ecr-registry }}" != "" ]]; then
-            echo "names=name=${ecr_name}" >> $GITHUB_OUTPUT
+            echo "names=name=${ECR_NAME}" >> $GITHUB_OUTPUT
           else
             echo "names=name=${REGISTRY_NAME}" >> $GITHUB_OUTPUT
           fi
@@ -177,7 +178,7 @@ jobs:
   push:
     runs-on: self-hosted
     if: ${{ inputs.push }}
-    needs: build
+    needs: [prepare, build]
     steps:
       - name: download digests
         uses: actions/download-artifact@v4
@@ -228,7 +229,7 @@ jobs:
         with:
           images: |
             name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr-enabled }}
-            name=${{ steps.vars.outputs.ecr_name }},enable=${{ inputs.ecr-registry != '' }}
+            name=${{ needs.prepare.outputs.ecr_name }},enable=${{ inputs.ecr-registry != '' }}
           tags: |
             type=raw,value=latest,enable=${{ inputs.disable-latest == false }}
             type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
