@@ -76,6 +76,8 @@ jobs:
   build:
     runs-on: [self-hosted, "${{ matrix.platform.runner }}"]
     needs: prepare
+    env:
+      ECR_NAME: ${{ needs.prepare.outputs.ecr_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -126,8 +128,6 @@ jobs:
 
       - name: set variables
         id: vars
-        env:
-          ECR_NAME: ${{ needs.prepare.outputs.ecr_name }}
         run: |
           echo "artifact=digests-$(echo '${{ matrix.platform.name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
           if [[ "${{ inputs.ecr-registry }}" != "" && "${{ inputs.ghcr-enabled }}" == "true" ]]; then
@@ -144,7 +144,7 @@ jobs:
         with:
           images: |
             name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr-enabled }}
-            name=${{ steps.vars.outputs.ecr_name }},enable=${{ inputs.ecr-registry != '' }}
+            name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-registry != '' }}
 
       - name: build image
         id: build
@@ -179,6 +179,8 @@ jobs:
     runs-on: self-hosted
     if: ${{ inputs.push }}
     needs: [prepare, build]
+    env:
+      ECR_NAME: ${{ needs.prepare.outputs.ecr_name }}
     steps:
       - name: download digests
         uses: actions/download-artifact@v4
@@ -229,7 +231,7 @@ jobs:
         with:
           images: |
             name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr-enabled }}
-            name=${{ needs.prepare.outputs.ecr_name }},enable=${{ inputs.ecr-registry != '' }}
+            name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-registry != '' }}
           tags: |
             type=raw,value=latest,enable=${{ inputs.disable-latest == false }}
             type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
@@ -251,7 +253,7 @@ jobs:
         working-directory: ${{ env.DIGESTS_DIRECTORY }}
         run: |
           docker buildx imagetools create $(jq --arg name "$REGISTRY_NAME" -cr '.tags | unique | map(select(startswith($name) | not)) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ inputs.ecr-registry }}/${{ inputs.ecr-repository }}@sha256:%s ' *)
+            $(printf '${{ env.ECR_NAME }}@sha256:%s ' *)
 
       - name: inspect ghcr image
         if: ${{ inputs.ghcr-enabled }}
@@ -261,7 +263,7 @@ jobs:
       - name: inspect ecr image
         if: ${{ inputs.ecr-registry != '' }}
         run: |
-          docker buildx imagetools inspect ${{ inputs.ecr-registry }}/${{ inputs.ecr-repository }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.ECR_NAME }}:${{ steps.meta.outputs.version }}
 
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2
