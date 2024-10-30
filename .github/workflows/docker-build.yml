@@ -15,12 +15,31 @@ on:
       disable-latest:
         type: boolean
         default: false
+      ghcr-enabled:
+        type: boolean
+        default: true
+      ecr-registry:
+        type: string
+        required: false
+      ecr-repository:
+        type: string
+        required: false
+      aws-oidc-role:
+        type: string
+        required: false
+      aws-region:
+        type: string
+        default: eu-central-1
+      aws-ecr-role:
+        type: string
+        required: false
 
 env:
   REGISTRY_NAME: ghcr.io/tracefy/${{ github.event.repository.name }}
   DIGESTS_DIRECTORY: ./${{ github.sha }}/digests
 
 permissions:
+  id-token: write
   contents: read
   packages: write
 
@@ -29,14 +48,23 @@ jobs:
     runs-on: [self-hosted]
     outputs:
       platforms: ${{ steps.vars.outputs.platforms }}
+      ecr_name: ${{ steps.vars.outputs.ecr_name }}
     steps:
+      - name: assert that both ecr input vars are set
+        if: ${{ (inputs.ecr-registry != '' && inputs.ecr-repository == '') || (inputs.ecr-registry == '' && inputs.ecr-repository != '') }}
+        run: echo "both ecr-registry and ecr-repository need to be specified to push to ecr" && exit 1
+
       - name: set variables
         id: vars
         env:
           PLATFORMS: ${{ inputs.platforms }}
+          ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+          ECR_REGISTRY: ${{ inputs.ecr-registry }}
         run: |
           data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X64" else "ARM64" end)})')
           echo "platforms=${data}" >> $GITHUB_OUTPUT
+          echo "ecr_name=$ECR_REGISTRY/$ECR_REPOSITORY" >> $GITHUB_OUTPUT
+
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2
         if: always()
@@ -48,6 +76,8 @@ jobs:
   build:
     runs-on: [self-hosted, "${{ matrix.platform.runner }}"]
     needs: prepare
+    env:
+      ECR_NAME: ${{ needs.prepare.outputs.ecr_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -75,16 +105,46 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: configure github role
+        if: ${{ inputs.ecr-registry != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.aws-oidc-role }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: configure ecr role
+        if: ${{ inputs.ecr-registry != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.aws-ecr-role }}
+          role-chaining: true
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: login to ecr
+        if: ${{ inputs.ecr-registry != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.ecr-registry }}
+
       - name: set variables
         id: vars
         run: |
           echo "artifact=digests-$(echo '${{ matrix.platform.name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
+          if [[ "${{ inputs.ecr-registry }}" != "" && "${{ inputs.ghcr-enabled }}" == "true" ]]; then
+            echo "names=\"name=${ECR_NAME},${REGISTRY_NAME}\"" >> $GITHUB_OUTPUT
+          elif [[ "${{ inputs.ecr-registry }}" != "" ]]; then
+            echo "names=name=${ECR_NAME}" >> $GITHUB_OUTPUT
+          else
+            echo "names=name=${REGISTRY_NAME}" >> $GITHUB_OUTPUT
+          fi
 
       - name: docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_NAME }}
+          images: |
+            name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr-enabled }}
+            name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-registry != '' }}
 
       - name: build image
         id: build
@@ -93,7 +153,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           platforms: ${{ matrix.platform.name }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY_NAME }},push_by_digest=true,name-canonical=true,push=${{ inputs.push }}
+          outputs: type=image,${{ steps.vars.outputs.names }},push_by_digest=${{ inputs.push }},name-canonical=true,push=${{ inputs.push }}
 
       - name: export digests
         run: |
@@ -118,7 +178,9 @@ jobs:
   push:
     runs-on: self-hosted
     if: ${{ inputs.push }}
-    needs: build
+    needs: [prepare, build]
+    env:
+      ECR_NAME: ${{ needs.prepare.outputs.ecr_name }}
     steps:
       - name: download digests
         uses: actions/download-artifact@v4
@@ -142,11 +204,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: configure github role
+        if: ${{ inputs.ecr-registry != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.aws-oidc-role }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: configure ecr role
+        if: ${{ inputs.ecr-registry != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.aws-ecr-role }}
+          role-chaining: true
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: login to ecr
+        if: ${{ inputs.ecr-registry != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.ecr-registry }}
+
       - name: docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_NAME }}
+          images: |
+            name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr-enabled }}
+            name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-registry != '' }}
           tags: |
             type=raw,value=latest,enable=${{ inputs.disable-latest == false }}
             type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
@@ -156,15 +241,29 @@ jobs:
             type=sha,enable=true,prefix=,suffix=,format=short
             type=sha,format=short,prefix={{branch}}-,suffix=-{{date 'YYYYMMDDHHmmss'}},enable={{is_default_branch}},priority=1
 
-      - name: create manifest list and push
+      - name: create manifest list and push to ghcr
+        if: ${{ inputs.ghcr-enabled }}
         working-directory: ${{ env.DIGESTS_DIRECTORY }}
         run: |
-          docker buildx imagetools create $(jq -cr '.tags | unique | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          docker buildx imagetools create $(jq --arg name "$REGISTRY_NAME" -cr '.tags | unique | map(select(startswith($name))) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_NAME }}@sha256:%s ' *)
 
-      - name: inspect image
+      - name: create manifest list and push to ecr
+        if: ${{ inputs.ecr-registry != '' }}
+        working-directory: ${{ env.DIGESTS_DIRECTORY }}
+        run: |
+          docker buildx imagetools create $(jq --arg name "$REGISTRY_NAME" -cr '.tags | unique | map(select(startswith($name) | not)) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.ECR_NAME }}@sha256:%s ' *)
+
+      - name: inspect ghcr image
+        if: ${{ inputs.ghcr-enabled }}
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_NAME }}:${{ steps.meta.outputs.version }}
+
+      - name: inspect ecr image
+        if: ${{ inputs.ecr-registry != '' }}
+        run: |
+          docker buildx imagetools inspect ${{ env.ECR_NAME }}:${{ steps.meta.outputs.version }}
 
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2
