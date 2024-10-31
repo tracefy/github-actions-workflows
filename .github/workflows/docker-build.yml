@@ -227,7 +227,7 @@ jobs:
       - name: inspect ecr image
         if: ${{ inputs.ecr-repository != '' }}
         run: |
-          docker buildx imagetools inspect ${{ inputs.ecr-repostiory }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ inputs.ecr-repository }}:${{ steps.meta.outputs.version }}
 
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2
