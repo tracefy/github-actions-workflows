@@ -8,12 +8,15 @@ on:
         required: true
       platforms:
         type: string
+        description: "comma separated list of platforms compatible with qemu"
         default: linux/arm64
       push:
         type: boolean
+        description: "whether to push the images or not (mainly used for testing)"
         default: true
       disable-latest:
         type: boolean
+        description: "force exclude the latest tag"
         default: false
       ghcr:
         type: boolean
@@ -109,7 +112,7 @@ jobs:
           echo "artifact=digests-$(echo '${{ matrix.platform.name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
           if [[ "$ECR_NAME" != "" && "${{ inputs.ghcr }}" == "true" ]]; then
             echo "names=\"name=${ECR_NAME},${REGISTRY_NAME}\"" >> $GITHUB_OUTPUT
-          elif [[ "${{ inputs.ecr-repository }}" != "" ]]; then
+          elif [[ "$ECR_NAME" != "" ]]; then
             echo "names=name=${ECR_NAME}" >> $GITHUB_OUTPUT
           else
             echo "names=name=${REGISTRY_NAME}" >> $GITHUB_OUTPUT
