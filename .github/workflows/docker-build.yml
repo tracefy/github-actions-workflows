@@ -8,30 +8,31 @@ on:
         required: true
       platforms:
         type: string
+        description: "comma separated list of platforms compatible with qemu"
         default: linux/arm64
       push:
         type: boolean
+        description: "whether to push the images or not (mainly used for testing)"
         default: true
       disable-latest:
         type: boolean
+        description: "force exclude the latest tag"
         default: false
-      ghcr-enabled:
+      ghcr:
         type: boolean
+        description: "enable pushing to ghcr.io"
         default: true
-      ecr-registry:
-        type: string
-        required: false
       ecr-repository:
         type: string
+        description: "<account-id>.dkr.ecr.<region>.amazonaws.com/<image>"
         required: false
-      aws-oidc-role:
+      aws-role-oid:
         type: string
+        description: "the web identity role used to authenticate to aws"
         required: false
-      aws-region:
+      aws-role-ecr:
         type: string
-        default: eu-central-1
-      aws-ecr-role:
-        type: string
+        description: "the role assumed after authenticating to get access to ecr"
         required: false
 
 env:
@@ -48,22 +49,14 @@ jobs:
     runs-on: [self-hosted]
     outputs:
       platforms: ${{ steps.vars.outputs.platforms }}
-      ecr_name: ${{ steps.vars.outputs.ecr_name }}
     steps:
-      - name: assert that both ecr input vars are set
-        if: ${{ (inputs.ecr-registry != '' && inputs.ecr-repository == '') || (inputs.ecr-registry == '' && inputs.ecr-repository != '') }}
-        run: echo "both ecr-registry and ecr-repository need to be specified to push to ecr" && exit 1
-
       - name: set variables
         id: vars
         env:
           PLATFORMS: ${{ inputs.platforms }}
-          ECR_REPOSITORY: ${{ inputs.ecr-repository }}
-          ECR_REGISTRY: ${{ inputs.ecr-registry }}
         run: |
           data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X64" else "ARM64" end)})')
           echo "platforms=${data}" >> $GITHUB_OUTPUT
-          echo "ecr_name=$ECR_REGISTRY/$ECR_REPOSITORY" >> $GITHUB_OUTPUT
 
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2
@@ -76,8 +69,6 @@ jobs:
   build:
     runs-on: [self-hosted, "${{ matrix.platform.runner }}"]
     needs: prepare
-    env:
-      ECR_NAME: ${{ needs.prepare.outputs.ecr_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -98,41 +89,30 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: login to container registry
+      - name: login to ghcr
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: configure github role
-        if: ${{ inputs.ecr-registry != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ inputs.aws-oidc-role }}
-          aws-region: ${{ inputs.aws-region }}
-
-      - name: configure ecr role
-        if: ${{ inputs.ecr-registry != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ inputs.aws-ecr-role }}
-          role-chaining: true
-          aws-region: ${{ inputs.aws-region }}
-
       - name: login to ecr
-        if: ${{ inputs.ecr-registry != '' }}
-        uses: docker/login-action@v3
+        if: ${{ inputs.ecr-repository != '' }}
+        uses: tracefy/github-actions-workflows/.github/actions/aws-ecr-login@v2
         with:
-          registry: ${{ inputs.ecr-registry }}
+          repository: ${{ inputs.ecr-repository }}
+          aws-role-oid: ${{ inputs.aws-role-oid }}
+          aws-role-ecr: ${{ inputs.aws-role-ecr }}
 
       - name: set variables
         id: vars
+        env:
+          ECR_NAME: ${{ inputs.ecr-repository }}
         run: |
           echo "artifact=digests-$(echo '${{ matrix.platform.name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
-          if [[ "${{ inputs.ecr-registry }}" != "" && "${{ inputs.ghcr-enabled }}" == "true" ]]; then
+          if [[ "$ECR_NAME" != "" && "${{ inputs.ghcr }}" == "true" ]]; then
             echo "names=\"name=${ECR_NAME},${REGISTRY_NAME}\"" >> $GITHUB_OUTPUT
-          elif [[ "${{ inputs.ecr-registry }}" != "" ]]; then
+          elif [[ "$ECR_NAME" != "" ]]; then
             echo "names=name=${ECR_NAME}" >> $GITHUB_OUTPUT
           else
             echo "names=name=${REGISTRY_NAME}" >> $GITHUB_OUTPUT
@@ -143,8 +123,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr-enabled }}
-            name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-registry != '' }}
+            name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr }}
+            name=${{ inputs.ecr-repository }},enable=${{ inputs.ecr-repository != '' }}
 
       - name: build image
         id: build
@@ -178,9 +158,7 @@ jobs:
   push:
     runs-on: self-hosted
     if: ${{ inputs.push }}
-    needs: [prepare, build]
-    env:
-      ECR_NAME: ${{ needs.prepare.outputs.ecr_name }}
+    needs: build
     steps:
       - name: download digests
         uses: actions/download-artifact@v4
@@ -197,41 +175,28 @@ jobs:
       - name: setup buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: login to container registry
+      - name: login to ghcr
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: configure github role
-        if: ${{ inputs.ecr-registry != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ inputs.aws-oidc-role }}
-          aws-region: ${{ inputs.aws-region }}
-
-      - name: configure ecr role
-        if: ${{ inputs.ecr-registry != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ inputs.aws-ecr-role }}
-          role-chaining: true
-          aws-region: ${{ inputs.aws-region }}
-
       - name: login to ecr
-        if: ${{ inputs.ecr-registry != '' }}
-        uses: docker/login-action@v3
+        if: ${{ inputs.ecr-repository != '' }}
+        uses: tracefy/github-actions-workflows/.github/actions/aws-ecr-login@v2
         with:
-          registry: ${{ inputs.ecr-registry }}
+          repository: ${{ inputs.ecr-repository }}
+          aws-role-oid: ${{ inputs.aws-role-oid }}
+          aws-role-ecr: ${{ inputs.aws-role-ecr }}
 
       - name: docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr-enabled }}
-            name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-registry != '' }}
+            name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr }}
+            name=${{ inputs.ecr-repository }},enable=${{ inputs.ecr-repository != '' }}
           tags: |
             type=raw,value=latest,enable=${{ inputs.disable-latest == false }}
             type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
@@ -242,28 +207,30 @@ jobs:
             type=sha,format=short,prefix={{branch}}-,suffix=-{{date 'YYYYMMDDHHmmss'}},enable={{is_default_branch}},priority=1
 
       - name: create manifest list and push to ghcr
-        if: ${{ inputs.ghcr-enabled }}
+        if: ${{ inputs.ghcr }}
         working-directory: ${{ env.DIGESTS_DIRECTORY }}
         run: |
           docker buildx imagetools create $(jq --arg name "$REGISTRY_NAME" -cr '.tags | unique | map(select(startswith($name))) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_NAME }}@sha256:%s ' *)
 
       - name: create manifest list and push to ecr
-        if: ${{ inputs.ecr-registry != '' }}
+        if: ${{ inputs.ecr-repository != '' }}
         working-directory: ${{ env.DIGESTS_DIRECTORY }}
         run: |
           docker buildx imagetools create $(jq --arg name "$REGISTRY_NAME" -cr '.tags | unique | map(select(startswith($name) | not)) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.ECR_NAME }}@sha256:%s ' *)
+            $(printf '${{ inputs.ecr-repository }}@sha256:%s ' *)
 
       - name: inspect ghcr image
-        if: ${{ inputs.ghcr-enabled }}
+        if: ${{ inputs.ghcr }}
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_NAME }}:${{ steps.meta.outputs.version }}
 
       - name: inspect ecr image
-        if: ${{ inputs.ecr-registry != '' }}
+        if: ${{ inputs.ecr-repository != '' }}
+        env:
+          ECR_NAME: ${{ inputs.ecr-repository }}
         run: |
-          docker buildx imagetools inspect ${{ env.ECR_NAME }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect "$ECR_NAME:${{ steps.meta.outputs.version }}"
 
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2

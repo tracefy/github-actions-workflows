@@ -1,0 +1,39 @@
+name: aws-ecr-login
+description: docker login to ecr
+inputs:
+  repository:
+    description: "registry domain <account-id>.dkr.ecr.<region>.amazonaws.com or complete repository (<registry>/image)"
+    required: true
+  aws-role-oid:
+    description: "the web identity role to assume to connect to aws"
+    required: true
+  aws-role-ecr:
+    description: "the ecr role to assume after loggin into aws (role-chain)"
+    required: true
+runs:
+  using: composite
+  steps:
+  - name: extract info
+    shell: bash
+    id: info
+    run: |
+      echo "region=$(echo '${{ inputs.repository }}' | cut -d. -f4)" >> $GITHUB_OUTPUT
+      echo "registry=$(echo '${{ inputs.repository }}' | cut -d/ -f1)" >> $GITHUB_OUTPUT
+
+  - name: configure aws credentials
+    uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: ${{ inputs.aws-role-oid }}
+      aws-region: ${{ steps.info.outputs.region }}
+
+  - name: assume ecr role
+    uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: ${{ inputs.aws-role-ecr }}
+      role-chaining: true
+      aws-region: ${{ steps.info.outputs.region }}
+
+  - name: login to ecr
+    uses: docker/login-action@v3
+    with:
+      registry: ${{ steps.info.outputs.registry }}
