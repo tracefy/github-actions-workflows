@@ -155,9 +155,7 @@ jobs:
   push:
     runs-on: self-hosted
     if: ${{ inputs.push }}
-    needs: [prepare, build]
-    env:
-      ECR_NAME: ${{ needs.prepare.outputs.ecr_name }}
+    needs: build
     steps:
       - name: download digests
         uses: actions/download-artifact@v4
@@ -226,8 +224,10 @@ jobs:
 
       - name: inspect ecr image
         if: ${{ inputs.ecr-repository != '' }}
+        env:
+          ECR_NAME: ${{ inputs.ecr-repository }}
         run: |
-          docker buildx imagetools inspect ${{ inputs.ecr-repository }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect "$ECR_NAME:${{ steps.meta.outputs.version }}"
 
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2
