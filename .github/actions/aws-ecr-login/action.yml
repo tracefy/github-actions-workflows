@@ -17,8 +17,8 @@ runs:
     shell: bash
     id: info
     run: |
-      echo "region=$(echo '${{ inputs.ecr-registry }}' | cut -d. -f4)" >> $GITHUB_OUTPUT
-      echo "registry=$(echo '${{ inputs.ecr-registry }}' | cut -d/ -f1)" >> $GITHUB_OUTPUT
+      echo "region=$(echo '${{ inputs.repository }}' | cut -d. -f4)" >> $GITHUB_OUTPUT
+      echo "registry=$(echo '${{ inputs.repository }}' | cut -d/ -f1)" >> $GITHUB_OUTPUT
 
   - name: configure aws credentials
     uses: aws-actions/configure-aws-credentials@v4
