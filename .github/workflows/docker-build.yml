@@ -121,10 +121,12 @@ jobs:
       - name: docker metadata
         id: meta
         uses: docker/metadata-action@v5
+        env:
+          ECR_NAME: ${{ inputs.ecr-repository != '' && inputs.ecr-repository || 'localhost:5000/dummy' }}
         with:
           images: |
             name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr }}
-            name=${{ inputs.ecr-repository }},enable=${{ inputs.ecr-repository != '' }}
+            name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-repository != '' }}
 
       - name: build image
         id: build
@@ -193,10 +195,12 @@ jobs:
       - name: docker metadata
         id: meta
         uses: docker/metadata-action@v5
+        env:
+          ECR_NAME: ${{ inputs.ecr-repository != '' && inputs.ecr-repository || 'localhost:5000/dummy' }}
         with:
           images: |
             name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr }}
-            name=${{ inputs.ecr-repository }},enable=${{ inputs.ecr-repository != '' }}
+            name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-repository != '' }}
           tags: |
             type=raw,value=latest,enable=${{ inputs.disable-latest == false }}
             type=raw,value=${{ inputs.tag }},enable=${{ !contains(inputs.tag, '.') }}
