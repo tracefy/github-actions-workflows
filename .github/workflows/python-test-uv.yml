@@ -1,0 +1,52 @@
+name: python-test-uv
+
+on:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: assert uv.lock is present
+        shell: bash
+        run: |
+          # require uv.lock to be present in the repository
+          [ -f uv.lock ] || (echo "uv.lock missing" 1>&2 && exit 1)
+
+      - name: install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: set up python
+        run: uv python install
+
+      - name: install dependencies
+        run:  uv sync --all-extras --dev --group lint
+
+      - name: format check
+        run: uv run ruff format --check
+
+      - name: lint
+        run: uv run ruff check
+
+      # https://docs.pytest.org/en/stable/reference/exit-codes.html
+      - name: test
+        shell: bash
+        run: |
+          uv run pytest || {
+            exit_code=$?
+            # allow exit code 0 (all pass) and 5 (no tests found)
+            if [[ $exit_code -ne 0 && $exit_code -ne 5 ]]
+            then
+              exit $exit_code
+            fi
+          }
+
+      - name: cleanup
+        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
+        if: always()
