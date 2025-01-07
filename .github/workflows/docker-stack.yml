@@ -52,9 +52,9 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ inputs.ssh_proxy }}" == "" ]]; then
-            scp  ${{ inputs.compose_file }} ${{ secrets.ssh_host }}:/home/tracefy/docker-compose.yml
+            scp  ${{ inputs.compose_file }} ${{ inputs.ssh_host }}:/home/tracefy/docker-compose.yml
           else
-            scp -oProxyCommand="ssh -W %h:%p ${{ inputs.ssh_proxy }}" ${{ inputs.compose_file }} ${{ secrets.ssh_host }}:/home/tracefy/docker-compose.yml
+            scp -oProxyCommand="ssh -W %h:%p ${{ inputs.ssh_proxy }}" ${{ inputs.compose_file }} ${{ inputs.ssh_host }}:/home/tracefy/docker-compose.yml
           fi
 
       - name: deploy
