@@ -40,7 +40,7 @@ jobs:
             echo 'ssh_host=${{ inputs.ssh_host }}' >> $GITHUB_OUTPUT
           else
             export HOST='-J ${{ inputs.ssh_proxy }} ${{ inputs.ssh_host }}'
-            echo 'ssh_host=$HOST' >> $GITHUB_OUTPUT
+            echo "ssh_host=$HOST" >> $GITHUB_OUTPUT
           fi
 
       - name: login to container registry
