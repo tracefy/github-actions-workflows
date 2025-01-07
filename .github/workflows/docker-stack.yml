@@ -6,9 +6,13 @@ on:
       compose_file:
         type: string
         required: true
-    secrets:
       ssh_host:
+        type: string
         required: true
+      ssh_proxy:
+        type: string
+        default: ""
+    secrets:
       ssh_private_key:
         required: true
       gh_token:
@@ -29,18 +33,33 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
+      - name: setup vars
+        id: variables
+        run: |
+          if [[ "${{ inputs.ssh_proxy }}" == "" ]]; then
+            echo 'ssh_host=${{ inputs.ssh_host }}' >> $GITHUB_OUTPUT
+          else
+            export HOST='-J ${{ inputs.ssh_proxy }} ${{ inputs.ssh_host }}'
+            echo 'ssh_host=$HOST' >> $GITHUB_OUTPUT
+          fi
+
       - name: login to container registry
         run: |
-          ssh ${{ secrets.ssh_host }} 'sudo su -c \
+          ssh ${{ steps.variables.outputs.ssh_host }} 'sudo su -c \
             "echo ${{ secrets.gh_token }} | docker login ghcr.io -u ${{ secrets.gh_user }} --password-stdin"'
 
       - name: move docker compose file
+        shell: bash
         run: |
-          scp  ${{ inputs.compose_file }} ${{ secrets.ssh_host }}:/home/tracefy/docker-compose.yml
+          if [[ "${{ inputs.ssh_proxy }}" == "" ]]; then
+            scp  ${{ inputs.compose_file }} ${{ secrets.ssh_host }}:/home/tracefy/docker-compose.yml
+          else
+            scp -oProxyCommand="ssh -W %h:%p ${{ inputs.ssh_proxy }}" ${{ inputs.compose_file }} ${{ secrets.ssh_host }}:/home/tracefy/docker-compose.yml
+          fi
 
       - name: deploy
         run: |
-          ssh -t ${{ secrets.host }} 'sudo docker stack deploy --with-registry-auth --compose-file /home/tracefy/docker-compose.yml --prune default'
+          ssh -t ${{ steps.variables.outputs.ssh_host }} 'sudo docker stack deploy --with-registry-auth --compose-file /home/tracefy/docker-compose.yml --prune default'
 
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2
