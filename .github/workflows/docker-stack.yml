@@ -1,0 +1,47 @@
+name: deploy docker stack
+
+on:
+  workflow_call:
+    inputs:
+      compose_file:
+        type: string
+        required: true
+    secrets:
+      ssh_host:
+        required: true
+      ssh_private_key:
+        required: true
+      gh_token:
+        required: true
+      gh_user:
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    env:
+      SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}/ssh_agent.sock
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: login to container registry
+        run: |
+          ssh ${{ secrets.ssh_host }} 'sudo su -c \
+            "echo ${{ secrets.gh_token }} | docker login ghcr.io -u ${{ secrets.gh_user }} --password-stdin"'
+
+      - name: move docker compose file
+        run: |
+          scp  ${{ inputs.compose_file }} ${{ secrets.ssh_host }}:/home/tracefy/docker-compose.yml
+
+      - name: deploy
+        run: |
+          ssh -t ${{ secrets.host }} 'sudo docker stack deploy --with-registry-auth --compose-file /home/tracefy/docker-compose.yml --prune default'
+
+      - name: cleanup
+        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
+        if: always()
