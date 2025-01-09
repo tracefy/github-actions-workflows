@@ -84,6 +84,8 @@ jobs:
 
       - name: setup qemu
         uses: docker/setup-qemu-action@v3
+        with:
+          cache-image: false
 
       - name: setup buildx
         id: buildx
