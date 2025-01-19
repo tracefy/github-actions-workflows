@@ -6,6 +6,10 @@ on:
       tag:
         type: string
         required: true
+      context:
+        type: string
+        description: "the docker context to use relative to the git context"
+        default: "."
       platforms:
         type: string
         description: "comma separated list of platforms compatible with qemu"
@@ -134,6 +138,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
+          context: ${{ inputs.context }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: ${{ matrix.platform.name }}
           labels: ${{ steps.meta.outputs.labels }}
