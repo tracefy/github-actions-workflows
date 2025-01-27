@@ -86,10 +86,10 @@ jobs:
           mkdir -p "$PWD/${{ github.run_id }}/.docker"
           echo "DOCKER_CONFIG=$PWD/${{ github.run_id }}/.docker" >> $GITHUB_ENV
 
-      - name: setup qemu
-        uses: docker/setup-qemu-action@v3
-        with:
-          cache-image: false
+      # - name: setup qemu
+      #   uses: docker/setup-qemu-action@v3
+      #   with:
+      #     cache-image: false
 
       - name: setup buildx
         id: buildx
