@@ -148,7 +148,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ inputs.context }}
-          file: ${{ inputs.file == '' && format('{0}/Dockerfile', inputs.context) || inputs.file }}
+          file: ${{ inputs.dockerfile == '' && format('{0}/Dockerfile', inputs.context) || inputs.dockerfile }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: ${{ matrix.platform.name }}
           labels: ${{ steps.meta.outputs.labels }}
