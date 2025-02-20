@@ -219,13 +219,13 @@ jobs:
             name=${{ env.REGISTRY_NAME }},enable=${{ inputs.ghcr }}
             name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-repository != '' }}
           tags: |
-            type=raw,value=latest,prefix={{inputs.tag-prefix}},enable=${{ inputs.disable-latest == false }}
-            type=raw,value=${{ inputs.tag }},prefix={{inputs.tag-prefix}},enable=${{ !contains(inputs.tag, '.') }}
-            type=semver,pattern={{version}},value=${{ inputs.tag }},prefix={{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
-            type=semver,pattern={{major}},value=${{ inputs.tag }},prefix={{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},prefix={{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
-            type=sha,enable=true,prefix={{inputs.tag-prefix}},suffix=,format=short
-            type=sha,format=short,prefix={{inputs.tag-prefix}}{{branch}}-,suffix=-{{date 'YYYYMMDDHHmmss'}},enable={{is_default_branch}},priority=1
+            type=raw,value=latest,prefix=${{inputs.tag-prefix}},enable=${{ inputs.disable-latest == false }}
+            type=raw,value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ !contains(inputs.tag, '.') }}
+            type=semver,pattern={{version}},value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
+            type=semver,pattern={{major}},value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
+            type=sha,enable=true,prefix=${{inputs.tag-prefix}},suffix=,format=short
+            type=sha,format=short,prefix=${{inputs.tag-prefix}}{{branch}}-,suffix=-{{date 'YYYYMMDDHHmmss'}},enable={{is_default_branch}},priority=1
 
       - name: create manifest list and push to ghcr
         if: ${{ inputs.ghcr }}
