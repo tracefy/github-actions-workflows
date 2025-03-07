@@ -43,15 +43,7 @@ jobs:
 
       - name: typecheck
         continue-on-error: ${{ inputs.require_typecheck == false }}
-        shell: bash
-        run: |
-          uv run basedpyright || {
-          	exit_code=$?
-          	if [[ $exit_code -eq 1 && "${{ inputs.require_typecheck }}" == "false" ]]; then
-          		echo "::warning title=Typechecking::Errors found"
-          	fi
-          		exit $exit_code
-          	}
+        run: uv run basedpyright
 
       # https://docs.pytest.org/en/stable/reference/exit-codes.html
       - name: test
