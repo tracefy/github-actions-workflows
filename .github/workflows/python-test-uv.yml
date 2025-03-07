@@ -2,6 +2,10 @@ name: python-test-uv
 
 on:
   workflow_call:
+    inputs:
+      require_typecheck:
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -29,12 +33,25 @@ jobs:
         run: |
           uv sync --all-extras --dev --group lint
           uv add --dev pytest pytest-cov coverage
+          uv add --dev basedpyright
 
       - name: format check
         run: uv run ruff format --check
 
       - name: lint
         run: uv run ruff check
+
+      - name: typecheck
+        continue-on-error: ${{ inputs.require_typecheck == false }}
+        shell: bash
+        run: |
+          uv run basedpyright || {
+          	exit_code=$?
+          	if [[ $exit_code -eq 1 && "${{ inputs.require_typecheck }}" == "false" ]]; then
+          		echo "::warning title=Typechecking::Errors found"
+          	fi
+          		exit $exit_code
+          	}
 
       # https://docs.pytest.org/en/stable/reference/exit-codes.html
       - name: test
