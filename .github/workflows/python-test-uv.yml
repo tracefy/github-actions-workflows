@@ -56,12 +56,17 @@ jobs:
             then
               exit $exit_code
             fi
+            if [[ $exit_code -eq 5 ]]
+            then
+              rm .coverage
+            fi
           }
 
       - name: coverage
         shell: bash
         run: |
-          if [ -f .coverage ]; then
+          if [[ -f .coverage ]]
+          then
             uv run coverage report
           fi
 
