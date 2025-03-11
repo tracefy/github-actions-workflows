@@ -60,7 +60,10 @@ jobs:
 
       - name: coverage
         shell: bash
-        run: uv run coverage report
+        run: |
+          if [ -f .coverage ]; then
+            uv run coverage report
+          fi
 
       - name: cleanup
         uses: tracefy/github-actions-workflows/.github/actions/clean@v2
