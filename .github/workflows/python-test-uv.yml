@@ -6,6 +6,9 @@ on:
       require_typecheck:
         type: boolean
         default: false
+      test_coverage_configured_internally:
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -50,7 +53,13 @@ jobs:
       - name: test
         shell: bash
         run: |
-          uv run pytest --cov=src --cov-report= --cov-branch || {
+          if [[ "${{ inputs.test_coverage_configured_internally }}" == "true" ]]; then
+            COV_OPTION="--cov"
+          else
+            COV_OPTION="--cov=src"
+          fi
+
+          uv run pytest $COV_OPTION --cov-report= --cov-branch || {
             exit_code=$?
             # allow exit code 0 (all pass) and 5 (no tests found)
             if [[ $exit_code -ne 0 && $exit_code -ne 5 ]]
