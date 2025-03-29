@@ -31,8 +31,9 @@ jobs:
 
       - name: install dependencies
         run: |
-          uv sync --all-extras --dev --group lint
+          uv sync --all-extras --dev --all-packages
           uv add --dev pytest pytest-cov coverage
+          uv add --dev ruff
           uv add --dev basedpyright
 
       - name: format check
