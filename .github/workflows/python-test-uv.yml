@@ -79,7 +79,3 @@ jobs:
           then
             uv run coverage report
           fi
-
-      - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
-        if: always()

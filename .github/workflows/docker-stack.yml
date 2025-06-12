@@ -60,7 +60,3 @@ jobs:
       - name: deploy
         run: |
           ssh -t ${{ steps.variables.outputs.ssh_host }} 'sudo docker stack deploy --with-registry-auth --compose-file /home/tracefy/docker-compose.yml --prune default'
-
-      - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
-        if: always()

@@ -34,7 +34,3 @@ jobs:
 
       - name: tests
         run: pytest
-
-      - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
-        if: always()

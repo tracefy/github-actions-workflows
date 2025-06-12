@@ -47,8 +47,3 @@ jobs:
             --update-failure-action=rollback \
             --update-order=start-first \
             default_${{ inputs.service }}'
-
-      - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
-        if: always()
-

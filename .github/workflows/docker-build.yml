@@ -70,10 +70,6 @@ jobs:
           data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X64" else "ARM64" end)})')
           echo "platforms=${data}" >> $GITHUB_OUTPUT
 
-      - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
-        if: always()
-
 
   # https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners
   # modified to also use appropiate runner depending on architecture/platform
@@ -170,10 +166,6 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
-        if: always()
-
   push:
     runs-on: self-hosted
     if: ${{ inputs.push }}
@@ -252,7 +244,3 @@ jobs:
           ECR_NAME: ${{ inputs.ecr-repository }}
         run: |
           docker buildx imagetools inspect "$ECR_NAME:${{ steps.meta.outputs.version }}"
-
-      - name: cleanup
-        uses: tracefy/github-actions-workflows/.github/actions/clean@v2
-        if: always()
