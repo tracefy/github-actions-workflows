@@ -9,10 +9,15 @@ on:
       test_coverage_configured_internally:
         type: boolean
         default: false
+      custom_runner_label:
+        type: string
+        default: Linux
 
 jobs:
   test:
-    runs-on: self-hosted
+    runs-on:
+    - self-hosted
+    - ${{ inputs.custom_runner_label }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
