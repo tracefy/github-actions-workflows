@@ -18,6 +18,10 @@ on:
         type: string
         description: "the dockerfile to use relative to the git context (default {context}/Dockerfile)"
         required: false
+      target:
+        type: string
+        description: "the target within the dockerfile to build"
+        required: false
       platforms:
         type: string
         description: "comma separated list of platforms compatible with qemu"
@@ -148,6 +152,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           platforms: ${{ matrix.platform.name }}
           labels: ${{ steps.meta.outputs.labels }}
+          target: ${{ inputs.target }}
           outputs: type=image,${{ steps.vars.outputs.names }},push_by_digest=${{ inputs.push }},name-canonical=true,push=${{ inputs.push }}
 
       - name: export digests
