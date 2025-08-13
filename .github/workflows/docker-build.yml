@@ -38,6 +38,10 @@ on:
         type: boolean
         description: "enable pushing to ghcr.io"
         default: true
+      ghcr-image-name:
+        type: string
+        description: "override ghcr image name (default: repository name)"
+        required: false
       ecr-repository:
         type: string
         description: "<account-id>.dkr.ecr.<region>.amazonaws.com/<image>"
@@ -52,7 +56,7 @@ on:
         required: false
 
 env:
-  REGISTRY_NAME: ghcr.io/tracefy/${{ github.event.repository.name }}
+  REGISTRY_NAME: ghcr.io/tracefy/${{ inputs.ghcr-image-name || github.event.repository.name }}
   DIGESTS_DIRECTORY: ./${{ github.sha }}/digests
 
 permissions:
