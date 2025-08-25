@@ -9,6 +9,9 @@ on:
       service:
         type: string
         default: ${{ github.event.repository.name }}
+      image_name:
+        type: string
+        default: ${{ github.event.repository.name }}
       skip_update:
         type: boolean
         default: false
@@ -26,19 +29,23 @@ jobs:
   deploy:
     runs-on: self-hosted
     env:
-      REGISTRY_NAME: ghcr.io/tracefy
+      IMAGE_REF: ghcr.io/tracefy/${{ inputs.image_name }}:${{ inputs.tag }}
     steps:
       - name: login to container registry
         run: |
           ssh ${{ secrets.ssh_host }} 'sudo su -c \
             "echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin"'
 
+      - name: pull image
+        run: |
+          ssh ${{ secrets.ssh_host }} 'sudo docker pull ${{ env.IMAGE_REF }}'
+
       - name: update service
         if: ${{ inputs.skip_update == false }}
         run: |
           ssh ${{ secrets.ssh_host }} '
           sudo docker service update \
-            --image=${{ env.REGISTRY_NAME }}/${{ github.event.repository.name }}:${{ inputs.tag }} \
+            --image=${{ env.IMAGE_REF }} \
             --with-registry-auth \
             --force \
             --detach=false \
