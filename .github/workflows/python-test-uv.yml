@@ -9,6 +9,10 @@ on:
       test_coverage_configured_internally:
         type: boolean
         default: false
+      extra_packages:
+        type: string
+        default: ""
+        description: "space seprated list of packages to install"
 
 jobs:
   test:
@@ -31,6 +35,11 @@ jobs:
 
       - name: set up python
         run: uv python install
+
+      - name: install extra packages
+        if: ${{ inputs.extra_packages != '' }}
+        shell: bash
+        run: apt-get -y install ${{ inputs.extra_packages }}
 
       - name: install dependencies
         run: |
