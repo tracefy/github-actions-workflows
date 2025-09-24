@@ -226,7 +226,7 @@ jobs:
             type=semver,pattern={{major}},value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
             type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
             type=sha,enable=true,prefix=${{inputs.tag-prefix}},suffix=,format=short
-            type=sha,format=short,prefix=${{inputs.tag-prefix}}{{branch}}-,suffix=-{{date 'YYYYMMDDHHmmss'}},enable=true,priority=1
+            type=sha,format=short,prefix=${{inputs.tag-prefix}}{{branch}}-,suffix=-{{date 'YYYYMMDDHHmmss'}},event=push,priority=1
 
       - name: create manifest list and push to ghcr
         if: ${{ inputs.ghcr }}
