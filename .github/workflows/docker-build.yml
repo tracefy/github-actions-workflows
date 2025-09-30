@@ -221,7 +221,7 @@ jobs:
             name=${{ env.ECR_NAME }},enable=${{ inputs.ecr-repository != '' }}
           tags: |
             type=raw,value=latest,prefix=${{inputs.tag-prefix}},enable=${{ inputs.disable-latest == false }}
-            type=raw,value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ !contains(inputs.tag, '.') }}
+            type=raw,value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}}
             type=semver,pattern={{version}},value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
             type=semver,pattern={{major}},value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
             type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag }},prefix=${{inputs.tag-prefix}},enable=${{ contains(inputs.tag, '.') }}
