@@ -127,7 +127,7 @@ jobs:
         env:
           ECR_NAME: ${{ inputs.ecr-repository }}
         run: |
-          echo "artifact=digests-$(echo '${{ matrix.platform.name }}' | tr '/' '-')" >> $GITHUB_OUTPUT
+          echo "artifact=digests-$(echo '${{ matrix.platform.name }}' | tr '/' '-')-$(date +%s%N)" >> $GITHUB_OUTPUT
           if [[ "$ECR_NAME" != "" && "${{ inputs.ghcr }}" == "true" ]]; then
             echo "names=\"name=${ECR_NAME},${REGISTRY_NAME}\"" >> $GITHUB_OUTPUT
           elif [[ "$ECR_NAME" != "" ]]; then
