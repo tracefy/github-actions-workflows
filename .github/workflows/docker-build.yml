@@ -69,6 +69,7 @@ jobs:
     runs-on: [self-hosted]
     outputs:
       platforms: ${{ steps.vars.outputs.platforms }}
+      artifact_prefix: ${{ steps.artifact_prefix.outputs.prefix }}
     steps:
       - name: set variables
         id: vars
@@ -77,6 +78,14 @@ jobs:
         run: |
           data=$(echo "\"${PLATFORMS}\"" | jq -c 'split(",") | map({ "name": ., "runner": (if . == "linux/amd64" then "X64" else "ARM64" end)})')
           echo "platforms=${data}" >> $GITHUB_OUTPUT
+
+      - name: artifact prefix
+        run: |
+          docker_hash=$(sha256sum ${{ inputs.dockerfile }} | cut -d' ' -f1 | cut -c1-8)
+          safe_context=$(echo "${{ inputs.context }}" | sed 's/[^a-zA-Z0-9]/_/g')
+          echo "prefix=${safe_context}-${{ inputs.target }}-${docker_hash}" >> $GITHUB_OUTPUT
+
+
 
 
   # https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners
@@ -127,7 +136,7 @@ jobs:
         env:
           ECR_NAME: ${{ inputs.ecr-repository }}
         run: |
-          echo "artifact=digests-$(echo '${{ matrix.platform.name }}' | tr '/' '-')-$(date +%s%N)" >> $GITHUB_OUTPUT
+          echo "artifact=${{ needs.prepare.outputs.artifact_prefix }}-$(echo '${{ matrix.platform.name }}' | tr '/' '-')-$(date +%s%N)" >> $GITHUB_OUTPUT
           if [[ "$ECR_NAME" != "" && "${{ inputs.ghcr }}" == "true" ]]; then
             echo "names=\"name=${ECR_NAME},${REGISTRY_NAME}\"" >> $GITHUB_OUTPUT
           elif [[ "$ECR_NAME" != "" ]]; then
@@ -178,13 +187,13 @@ jobs:
   push:
     runs-on: self-hosted
     if: ${{ inputs.push }}
-    needs: build
+    needs: [build, perpare]
     steps:
       - name: download digests
         uses: actions/download-artifact@v4
         with:
           path: ${{ env.DIGESTS_DIRECTORY }}
-          pattern: digests-*
+          pattern: ${{ needs.prepare.outputs.artifact_prefix }}-*
           merge-multiple: true
 
       - name: set temporary docker config
