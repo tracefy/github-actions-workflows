@@ -187,7 +187,7 @@ jobs:
   push:
     runs-on: self-hosted
     if: ${{ inputs.push }}
-    needs: [build, perpare]
+    needs: [build, prepare]
     steps:
       - name: download digests
         uses: actions/download-artifact@v4
