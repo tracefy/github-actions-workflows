@@ -22,6 +22,10 @@ on:
         type: string
         description: "the target within the dockerfile to build"
         required: false
+      build-args:
+        type: string
+        description: "build arguments to pass to docker build step e.g. name=test,gitsha=123,..."
+        required: false
       platforms:
         type: string
         description: "comma separated list of platforms compatible with qemu"
@@ -162,6 +166,7 @@ jobs:
           platforms: ${{ matrix.platform.name }}
           labels: ${{ steps.meta.outputs.labels }}
           target: ${{ inputs.target }}
+          build-args: ${{ inputs.build-args }}
           outputs: type=image,${{ steps.vars.outputs.names }},push_by_digest=${{ inputs.push }},name-canonical=true,push=${{ inputs.push }}
 
       - name: export digests
