@@ -1,0 +1,140 @@
+name: Generate OpenAPI spec and client libraries
+
+on:
+  workflow_call:
+    inputs:
+      dry_run:
+        type: boolean
+        required: false
+        default: true
+      branch:
+        type: string
+        required: false
+        default: master
+
+permissions:
+  contents: write
+
+jobs:
+  generate-spec:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.TRACEFY_GITHUB_APP_ID }}
+          private-key: ${{ secrets.TRACEFY_GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Checkout branch
+        run: |
+          git fetch origin ${{ inputs.branch }}
+          git checkout ${{ inputs.branch }}
+          git reset --hard origin/${{ inputs.branch }}
+
+      - name: assert uv.lock is present
+        shell: bash
+        run: |
+          # require uv.lock to be present in the repository
+          [ -f uv.lock ] || (echo "uv.lock missing" 1>&2 && exit 1)
+
+      - name: install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: set up python
+        run: uv python install
+
+      - name: generate OpenAPI spec
+        run: |
+          mkdir -p client
+          uv run spec client/openapi.new.json
+
+      - name: correct openapi version
+        continue-on-error: true
+        run: |
+          jq --slurpfile src client/openapi.json '.info.version = $src[0].info.version' client/openapi.new.json > tmp.json
+          mv tmp.json client/openapi.new.json
+
+      - name: install oasdiff in runner
+        shell: bash
+        run: curl -fsSL https://raw.githubusercontent.com/oasdiff/oasdiff/main/install.sh | sh
+
+      - name: get spec change severity
+        id: changelog
+        shell: bash
+        run: |
+          oasdiff -f json changelog client/openapi.json client/openapi.new.json > client/diff.json
+
+          MAX_LEVEL=$(jq 'map(.level) | max // 0' client/diff.json || echo 0)
+
+          if [[ "$MAX_LEVEL" -eq 0 ]]; then
+            PREFIX="fix"
+          elif [[ "$MAX_LEVEL" -eq 1 ]]; then
+            PREFIX="feat"
+          else
+            PREFIX="feat!"
+          fi
+
+          echo "commit_prefix=$PREFIX" >> "$GITHUB_OUTPUT"
+
+      - name: configure git
+        run: |
+          git config user.name "tracefy[bot]"
+          git config user.email "tracefy[bot]@users.noreply.github.com"
+
+      - name: check if spec changed
+        id: check_spec
+        run: |
+          PREFIX=${{ steps.changelog.outputs.commit_prefix }}
+
+          mv client/openapi.new.json client/openapi.json
+
+          git add client/openapi.json
+
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes to spec"
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git commit -m "$PREFIX: regenerate OpenAPI spec"
+
+      - name: generate python client
+        if: ${{ steps.check_spec.outputs.changed == 'true' }}
+        uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-client@v2
+        with:
+          generator: python
+          commit_prefix: ${{ steps.changelog.outputs.commit_prefix }}
+          client_name: client-py
+          spec_file: client/openapi.json
+          config_file: client/py/oag-config.yml
+          output_dir: client/py
+
+      - name: generate typescript client
+        if: ${{ steps.check_spec.outputs.changed == 'true' }}
+        uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-client@v2
+        with:
+          generator: typescript-axios
+          commit_prefix: ${{ steps.changelog.outputs.commit_prefix }}
+          client_name: client-ts
+          spec_file: client/openapi.json
+          config_file: client/ts/oag-config.yml
+          output_dir: client/ts
+
+      - name: list changes
+        run: git log origin/${{ inputs.branch }}..HEAD
+
+      - name: push changes
+        if: ${{ !(inputs.dry_run || false) }}
+        run: git push
