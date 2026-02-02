@@ -1,0 +1,57 @@
+name: client library generator
+description: Generates client library using OpenApi Generator
+
+inputs:
+  generator:
+    description: which generator to use
+    required: true
+  commit_prefix:
+    description: the commit prefix to use for the generation commit
+    required: true
+  client_name:
+    description: the name of the client library
+    required: true
+  spec_file:
+    description: the openapi spec file to use when generating the client
+    required: false
+    default: client/openapi.json
+  config_file:
+    description: the config file to use when generating the client
+    required: true
+  output_dir:
+    description: the output directory for the client
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: assert openapi spec is present
+      shell: bash
+      run: |
+        [ -f ${{ inputs.spec_file }} ] || (echo "openapi spec is missing" 1>&2 && exit 1)
+
+    - name: assert generator config is present
+      shell: bash
+      run: |
+        [ -f ${{ inputs.config_file }} ] || (echo "generator config for ${{ inputs.client_name }} is missing" 1>&2 && exit 1)
+
+    - name: Generate client
+      uses: openapi-generators/openapitools-generator-action@v1
+      with:
+        generator: ${{ inputs.generator }}
+        openapi-file: ${{ inputs.spec_file }}
+        config-file: ${{ inputs.config_file }}
+        command-args: -o ${{ inputs.output_dir }}
+
+    - name: check for changes
+      shell: bash
+      run: |
+        git add ${{ inputs.output_dir }}
+
+        if git diff --cached --quiet; then
+          echo "No changes to ${{ inputs.client_name }}"
+          exit 0
+        fi
+
+        git commit -m "${{ inputs.commit_prefix }}: automated generation of ${{ inputs.client_name }} library"
+
