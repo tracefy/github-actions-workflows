@@ -53,7 +53,7 @@ runs:
     - name: check for changes
       shell: bash
       run: |
-        VERSION=$(jq -r '.${{ inputs.output_dir }}' .release-please-manifest.json)
+        VERSION=$(jq -r '.["${{ inputs.output_dir }}"]' .release-please-manifest.json)
 
         git add ${{ inputs.output_dir }}
 
