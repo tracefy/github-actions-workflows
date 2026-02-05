@@ -8,6 +8,13 @@ inputs:
   commit_prefix:
     description: the commit prefix to use for the generation commit
     required: true
+  bootstrap:
+    description: whether to generate the initial client
+    default: "false"
+    required: false
+  severity:
+    description: the severity of the spec change to determine the version bump
+    required: true
   client_name:
     description: the name of the client library
     required: true
@@ -46,12 +53,36 @@ runs:
     - name: check for changes
       shell: bash
       run: |
+        VERSION=$(jq -r '.${{ inputs.output_dir }}' .release-please-manifest.json)
+
         git add ${{ inputs.output_dir }}
+
+        if [[ "${{ inputs.bootstrap }}" == "true" ]]; then
+          echo "Bootstrapping ${{ inputs.client_name }} at version $VERSION"
+          git commit --allow-empty -m "chore: auto-generate ${{ inputs.client_name }}" -m "Release-As: $VERSION"
+          exit 0
+        fi
 
         if git diff --cached --quiet; then
           echo "No changes to ${{ inputs.client_name }}"
           exit 0
         fi
 
-        git commit -m "${{ inputs.commit_prefix }}: automated generation of ${{ inputs.client_name }} library"
+        CHANGE="${{ inputs.severity }}"
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
 
+        if [[ "$CHANGE" -eq 0 ]]; then
+          PATCH=$((PATCH + 1))
+        elif [[ "$CHANGE" -eq 1 ]]; then
+          MINOR=$((MINOR + 1))
+          PATCH=0
+        else
+          MAJOR=$((MAJOR + 1))
+          MINOR=0
+          PATCH=0
+        fi
+
+        NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+        echo "Bumping spec version from $VERSION -> $NEW_VERSION"
+
+        git commit -m "chore: auto-generate ${{ inputs.client_name }}" -m "Release-As: $NEW_VERSION"
