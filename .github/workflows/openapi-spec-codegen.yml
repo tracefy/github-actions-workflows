@@ -18,6 +18,9 @@ on:
       TRACEFY_GITHUB_APP_PRIVATE_KEY:
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   compare-openapi:
     runs-on: ubuntu-latest
