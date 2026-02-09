@@ -1,0 +1,158 @@
+
+name: Generate OpenAPI spec if necessary
+
+on:
+  workflow_call:
+    inputs:
+      dry_run:
+        type: boolean
+        required: false
+        default: true
+      branch:
+        type: string
+        required: false
+        default: master
+    secrets:
+      TRACEFY_GITHUB_APP_ID:
+        required: true
+      TRACEFY_GITHUB_APP_PRIVATE_KEY:
+        required: true
+
+jobs:
+  compare-openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.TRACEFY_GITHUB_APP_ID }}
+          private-key: ${{ secrets.TRACEFY_GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Checkout branch
+        run: |
+          git fetch origin ${{ inputs.branch }}
+          git checkout ${{ inputs.branch }}
+          git reset --hard origin/${{ inputs.branch }}
+
+      - name: assert uv.lock is present
+        shell: bash
+        run: |
+          # require uv.lock to be present in the repository
+          [ -f uv.lock ] || (echo "uv.lock missing" 1>&2 && exit 1)
+
+      - name: assert .release-please-manifest.json is present
+        shell: bash
+        run: |
+          [ -f .release-please-manifest.json ] || (echo ".release-please-manifest.json missing" 1>&2 && exit 1)
+
+      - name: install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: set up python
+        run: uv python install
+
+      - name: install oasdiff in runner
+        run: curl -fsSL https://raw.githubusercontent.com/oasdiff/oasdiff/main/install.sh | sh
+
+      - name: configure git
+        run: |
+          git config user.name "tracefy[bot]"
+          git config user.email "tracefy[bot]@users.noreply.github.com"
+
+      - name: compare-spec
+        id: compare
+        shell: bash
+        run: |
+          VERSION=$(jq -r '.client' .release-please-manifest.json)
+          RELEASE_TAG="openapi/$VERSION"
+          FILE_PATH="client/openapi.json"
+
+          echo "Looking for spec file at '$FILE_PATH'"
+          if [[ ! -f "$FILE_PATH" ]]; then
+            echo "Spec not found"
+            uv run spec "$FILE_PATH"
+            git add "$FILE_PATH"
+            git commit -m "chore: auto-generate openapi spec" -m "Release-As: $VERSION"
+            echo "push=true" >> "$GITHUB_OUTPUT"
+            echo "Spec file generated at '$FILE_PATH'"
+            exit 0
+          fi
+          echo "Spec file found"
+
+          echo "Generating openapi spec to compare"
+          uv run spec "$FILE_PATH"
+
+          git show "${GITHUB_SHA}:${FILE_PATH}" > client/openapi.prev.json
+
+          CHANGE_COUNT=$(oasdiff -f json diff client/openapi.prev.json "$FILE_PATH" | jq length)
+
+          if [[ "$CHANGE_COUNT" -eq 0 ]]; then
+            echo "No spec changes since last commit"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Looking for release with tag '$RELEASE_TAG'"
+          git rev-parse "$RELEASE_TAG"
+          if ! git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "No release found. You might need to create a manual release for the spec"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git show "${RELEASE_TAG}:${FILE_PATH}" > client/openapi.prev.json
+
+          CHANGE_COUNT=$(oasdiff -f json diff client/openapi.prev.json "$FILE_PATH" | jq length)
+
+          if [[ "$CHANGE_COUNT" -eq 0 ]]; then
+            echo "No spec changes since last release, resetting version to previous release"
+            git add "$FILE_PATH"
+            git commit -m "chore: auto-generate openapi spec" -m "Release-As: $VERSION"
+            echo "push=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CHANGE=$(oasdiff -f json changelog client/openapi.prev.json "$FILE_PATH" | jq 'map(.level) | max // 0')
+          echo "Spec change severity is $CHANGE"
+
+          # Extract major, minor, patch
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+
+          # Validate version
+          if [[ -z "$MAJOR" || -z "$MINOR" || -z "$PATCH" ]]; then
+            echo "Invalid version: $VERSION"
+            exit 1
+          fi
+
+          # Bump logic
+          if [[ "$CHANGE" -eq 0 ]]; then
+            PATCH=$((PATCH + 1))
+          elif [[ "$CHANGE" -eq 1 ]]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          fi
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "Bumping spec version from $VERSION -> $NEW_VERSION"
+          git add "$FILE_PATH"
+          git commit -m "chore: auto-generate openapi spec" -m "Release-As: $NEW_VERSION"
+          echo "push=true" >> "$GITHUB_OUTPUT"
+
+      - name: push changes
+        if: ${{ steps.compare.outputs.push == 'true' && !(inputs.dry_run || false) }}
+        run: git push
