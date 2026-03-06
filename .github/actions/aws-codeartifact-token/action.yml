@@ -1,0 +1,54 @@
+name: aws-codeartifact-token
+description: generate aws codeartifact authorization token
+inputs:
+  repository-url: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/<format>/<repository>"
+  required: true
+  aws-role-oid:
+    description: "the web identity role to assume to connect to aws"
+    required: true
+  aws-role-codeartifact:
+    description: "the codeartifact role to assume after loggin into aws (role-chain)"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: extract infor
+      shell: bash
+      id: info
+      run: |
+        url="${{ inputs.repository-url }}"
+
+        u=${url#https://}; u=${u#http://}
+        host=${u%%/*}; path=${u#*/}
+
+        sub=${host%%.d.codeartifact.*}
+        region=${host#*.d.codeartifact.}; region=${region%%.*}
+        domain=${sub%-*}; domain_owner=${sub##*-}
+        format=${path%%/*}; repository=${path#*/}; repository=${repository%%/*}
+
+        echo "domain=$domain" >> $GITHUB_OUTPUT
+        echo "domain_owner=$domain_owner" >> $GITHUB_OUTPUT
+        echo "region=$region" >> $GITHUB_OUTPUT
+        echo "format=$format" >> $GITHUB_OUTPUT
+        echo "repository=$repository" >> $GITHUB_OUTPUT
+
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws-role-oid }}
+        aws-region: ${{ steps.info.outputs.region }}
+
+    - name: assume ecr role
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws-role-codeartifact }}
+        role-chaining: true
+        aws-region: ${{ steps.info.outputs.region }}
+
+    - name: generate codeartifact token
+      id: generate
+      run: |
+        echo "AWS_CODEARTIFACT_TOKEN=$(aws codeartifact get-authorization-token --domain ${{ steps.info.outputs.domain }} --domain-owner ${{ steps.info.outputs.domain_owner }} --query authorizationToken --output text)" >> $GITHUB_ENV
+        echo "AWS_CODEARTIFACT_REPOSITORY_URL=$(aws codeartifact get-repository-endpoint --domain ${{ steps.info.outputs.domain }} --domain-owner ${{ steps.info.outputs.domain_owner }} --repository ${{ steps.info.outputs.repository }} --format ${{ steps.info.outputs.format }} --query repositoryEndpoint --output text)" >> $GITHUB_ENV
+
