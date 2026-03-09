@@ -37,9 +37,6 @@ on:
         required: false
         default: private-registry
 
-env:
-  UV_PUBLISH_USERNAME: aws
-
 permissions:
   id-token: write
   contents: read
@@ -82,6 +79,10 @@ jobs:
         if: ${{ !(inputs.dry_run || false) }}
         shell: bash
         run: |
+          export UV_PUBLISH_USERNAME=aws
           export UV_PUBLISH_PASSWORD=${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
-          uv publish --index ${{ inputs.index }} ${{ inputs.dir }}/dist/*
+          export UV_PUBLISH_URL=${{ inputs.codeartifact-domain }}pypi/py-pkgs/
+          export UV_PUBLISH_CHECK_URL=${UV_PUBLISH_URL}simple/
+
+          uv publish ${{ inputs.dir }}/dist/*
 
