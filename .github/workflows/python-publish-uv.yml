@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           repo=${{ inputs.codeartifact-repository }}
-          domain= $(echo "$repo" | awk -F/ '{print $1"//"$3}')
+          domain=$(echo "$repo" | awk -F/ '{print $1"//"$3}')
           echo "domain=$domain" >> $GITHUB_OUTPUT
           echo "check_url=${repo%/}/simple/" >> $GITHUB_OUTPUT
 
