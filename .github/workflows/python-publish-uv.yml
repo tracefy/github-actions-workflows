@@ -4,6 +4,11 @@ description: build and publish python package to private registry
 on:
   workflow_call:
     inputs:
+      ref:
+        type: string
+        description: 'optional branch, tag, or commit to check out'
+        required: false
+        default: ''
       dir:
         type: string
         description: "which package to build and publish"
@@ -45,6 +50,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: assert uv.lock is present
         shell: bash
