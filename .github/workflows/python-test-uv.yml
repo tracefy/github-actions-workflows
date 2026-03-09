@@ -29,6 +29,9 @@ on:
         required: false
         default: "https://tracefy-288761731503.d.codeartifact.eu-central-1.amazonaws.com/"
 
+permissions:
+  id-token: write
+
 jobs:
   test:
     runs-on: self-hosted
