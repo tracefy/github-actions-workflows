@@ -1,0 +1,79 @@
+name: build and publish python package to private registry
+
+on:
+  workflow_call:
+    inputs:
+      dir:
+        type: string
+        description: "which package to build and publish"
+        required: false
+        default: "."
+      dry-run:
+        type: boolean
+        description: "whether to publish the package or not"
+        required: false
+        default: false
+      aws-role-oid:
+        type: string
+        description: "the web identity role used to authenticate to aws"
+        required: true
+      aws-role-codeartifact:
+        type: string
+        description: "the role assumed after authenticating to generate the codeartifact authorization token"
+        required: true
+      codeartifact-domain:
+        type: string
+        description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/"
+        required: true
+      index:
+        type: string
+        description: "the index to use (defined in the pyproject.toml)"
+        required: false
+        default: private-registry
+
+env:
+  UV_PUBLISH_USERNAME: aws
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-publish:
+    runs-on: self-hosted
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: assert uv.lock is present
+        shell: bash
+        run: |
+          # require uv.lock to be present in the repository
+          [ -f uv.lock ] || (echo "uv.lock missing" 1>&2 && exit 1)
+
+      - name: install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: generate codeartifact token
+        id: codeartifact-token
+        uses: tracefy/github-actions-workflows/.github/actions/aws-codeartifact-token@v2
+        with:
+          codeartifact-domain: ${{ inputs.codeartifact-domain }}
+          aws-role-oid: ${{ inputs.aws-role-oid }}
+          aws-role-codeartifact: ${{ inputs.aws-role-codeartifact }}
+
+      - name: build
+        shell: bash
+        run: |
+          uv build ${{ inputs.dir }}
+
+      - name: publish
+        if: ${{ !(inputs.dry_run || false) }}
+        shell: bash
+        run: |
+          export UV_PUBLISH_PASSWORD=${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
+          uv publish --index ${{ inputs.index }} ${{ dir }}/dist/*
+
