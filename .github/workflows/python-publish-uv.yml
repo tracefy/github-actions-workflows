@@ -9,7 +9,7 @@ on:
         description: "which package to build and publish"
         required: false
         default: "."
-      dry-run:
+      dry_run:
         type: boolean
         description: "whether to publish the package or not"
         required: false
@@ -76,5 +76,5 @@ jobs:
         shell: bash
         run: |
           export UV_PUBLISH_PASSWORD=${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
-          uv publish --index ${{ inputs.index }} ${{ dir }}/dist/*
+          uv publish --index ${{ inputs.index }} ${{ inputs.dir }}/dist/*
 
