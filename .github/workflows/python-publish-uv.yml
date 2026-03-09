@@ -1,4 +1,5 @@
-name: build and publish python package to private registry
+name: python publish uv
+description: build and publish python package to private registry
 
 on:
   workflow_call:
