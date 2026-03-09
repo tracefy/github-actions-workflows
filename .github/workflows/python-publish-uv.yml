@@ -86,7 +86,7 @@ jobs:
           UV_PUBLISH_USERNAME: aws
           UV_PUBLISH_PASSWORD: ${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
           UV_PUBLISH_URL: ${{ inputs.codeartifact-repository }}
-          UV_PUBLISH_CHECK_URL: ${{ steps.outputs.check_url }}
+          UV_PUBLISH_CHECK_URL: ${{ steps.urls.outputs.check_url }}
         run: |
 
           uv publish ${{ inputs.dir }}/dist/*
