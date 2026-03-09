@@ -50,6 +50,7 @@ runs:
 
     - name: generate codeartifact token
       id: generate
+      shell: bash
       run: |
         echo "AWS_CODEARTIFACT_TOKEN=$(aws codeartifact get-authorization-token --domain ${{ steps.info.outputs.domain }} --domain-owner ${{ steps.info.outputs.domain_owner }} --query authorizationToken --output text)" >> $GITHUB_OUTPUT
 
