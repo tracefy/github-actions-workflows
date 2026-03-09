@@ -13,6 +13,20 @@ on:
         type: string
         default: ""
         description: "space seprated list of packages to install"
+      aws-role-oid:
+        type: string
+        description: "the web identity role used to authenticate to aws"
+        required: false
+        default: "arn:aws:iam::225989361606:role/oidc-github-terraform"
+      aws-role-codeartifact:
+        type: string
+        description: "the role assumed after authenticating to generate the codeartifact authorization token"
+        required: false
+        default: "arn:aws:iam::288761731503:role/github/code-artifact"
+      codeartifact-domain:
+        description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/"
+        required: false
+        default: "https://tracefy-288761731503.d.codeartifact.eu-central-1.amazonaws.com/"
 
 jobs:
   test:
@@ -20,6 +34,20 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+
+      - name: generate codeartifact token
+        id: codeartifact-token
+        if: ${{ inputs.codeartifact-domain != ''  && inputs.aws-role-codeartifact != '' }}
+        uses: tracefy/github-actions-workflows/.github/actions/aws-codeartifact-token@v2
+        with:
+          repository: ${{ inputs.codeartifact-domain }}
+          aws-role-oid: ${{ inputs.aws-role-oid }}
+          aws-role-ecr: ${{ inputs.aws-role-codeartifact }}
+
+      - name: set credentials for private repository
+        run: |
+          echo "UV_INDEX_PRIVATE_REGISTRY_USERNAME=aws" >> $GITHUB_ENV
+          echo "UV_INDEX_PRIVATE_REGISTRY_PASSWORD=${{ steps.codeartifact-token.AWS_CODEARTIFACT_TOKEN }}" >> $GITHUB_ENV
 
       - name: assert uv.lock is present
         shell: bash
