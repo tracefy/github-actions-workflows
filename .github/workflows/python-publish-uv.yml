@@ -27,15 +27,10 @@ on:
         type: string
         description: "the role assumed after authenticating to generate the codeartifact authorization token"
         required: true
-      codeartifact-domain:
+      codeartifact-repository:
         type: string
-        description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/"
+        description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/{format}/{repository}/"
         required: true
-      index:
-        type: string
-        description: "the index to use (defined in the pyproject.toml)"
-        required: false
-        default: private-registry
 
 permissions:
   id-token: write
@@ -62,11 +57,19 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
+      - name: extract codeartifact urls
+        id: urls
+        shell: bash
+        run: |
+          repo=${{ inputs.codeartifact-repository }}
+          echo "domain=${repo%%/*/*/*}" >> $GITHUB_OUTPUT
+          echo "check_url=${repo%/}/simple/" >> $GITHUB_OUTPUT
+
       - name: generate codeartifact token
         id: codeartifact-token
         uses: tracefy/github-actions-workflows/.github/actions/aws-codeartifact-token@v2
         with:
-          codeartifact-domain: ${{ inputs.codeartifact-domain }}
+          codeartifact-domain: ${{ steps.urls.outputs.domain }}
           aws-role-oid: ${{ inputs.aws-role-oid }}
           aws-role-codeartifact: ${{ inputs.aws-role-codeartifact }}
 
@@ -78,11 +81,12 @@ jobs:
       - name: publish
         if: ${{ !(inputs.dry_run || false) }}
         shell: bash
+        env:
+          UV_PUBLISH_USERNAME: aws
+          UV_PUBLISH_PASSWORD: ${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
+          UV_PUBLISH_URL: ${{ inputs.codeartifact-repository }}
+          UV_PUBLISH_CHECK_URL: ${{ steps.outputs.check_url }}
         run: |
-          export UV_PUBLISH_USERNAME=aws
-          export UV_PUBLISH_PASSWORD=${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
-          export UV_PUBLISH_URL=${{ inputs.codeartifact-domain }}pypi/py-pkgs/
-          export UV_PUBLISH_CHECK_URL=${UV_PUBLISH_URL}simple/
 
           uv publish ${{ inputs.dir }}/dist/*
 
