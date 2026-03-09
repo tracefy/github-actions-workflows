@@ -114,9 +114,9 @@ jobs:
         if: ${{ inputs.codeartifact-domain != ''  && inputs.aws-role-codeartifact != '' }}
         uses: tracefy/github-actions-workflows/.github/actions/aws-codeartifact-token@v2
         with:
-          codeartifacts-domain: ${{ inputs.codeartifact-domain }}
+          codeartifact-domain: ${{ inputs.codeartifact-domain }}
           aws-role-oid: ${{ inputs.aws-role-oid }}
-          aws-role-codeartifacts: ${{ inputs.aws-role-codeartifact }}
+          aws-role-codeartifact: ${{ inputs.aws-role-codeartifact }}
 
       - name: set temporary docker config
         run: |
