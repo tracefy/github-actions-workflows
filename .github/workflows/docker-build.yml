@@ -58,6 +58,13 @@ on:
         type: string
         description: "the role assumed after authenticating to get access to ecr"
         required: false
+      aws-role-codeartifact:
+        type: string
+        description: "the role assumed after authenticating to generate the codeartifact authorization token"
+        required: false
+      codeartifact-domain:
+        description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/"
+        required: false
 
 env:
   REGISTRY_NAME: ghcr.io/tracefy/${{ inputs.ghcr-image-name || github.event.repository.name }}
@@ -87,7 +94,6 @@ jobs:
           safe_context=$(echo "${{ inputs.context }}" | sed 's/[^a-zA-Z0-9]/_/g')
           echo "prefix=${safe_context}-${{ inputs.target }}-${docker_hash}" >> $GITHUB_OUTPUT
 
-
   # https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners
   # modified to also use appropiate runner depending on architecture/platform
   # if no runner exists that for the platform, then it defaults to using qemu on a arm64 runner
@@ -101,6 +107,15 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+
+      - name: generate codeartifact token
+        id: codeartifact-token
+        if: ${{ inputs.codeartifact-domain != ''  && inputs.aws-role-codeartifact != '' }}
+        uses: tracefy/github-actions-workflows/.github/actions/aws-codeartifact-token@v2
+        with:
+          repository: ${{ inputs.codeartifact-domain }}
+          aws-role-oid: ${{ inputs.aws-role-oid }}
+          aws-role-ecr: ${{ inputs.aws-role-codeartifact }}
 
       - name: set temporary docker config
         run: |
@@ -145,7 +160,6 @@ jobs:
             echo "names=name=${REGISTRY_NAME}" >> $GITHUB_OUTPUT
           fi
 
-
       - name: docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -168,6 +182,7 @@ jobs:
           target: ${{ inputs.target }}
           build-args: ${{ inputs.build-args }}
           outputs: type=image,${{ steps.vars.outputs.names }},push_by_digest=${{ inputs.push }},name-canonical=true,push=${{ inputs.push }}
+          secrets: AWS_CODEARTIFACT_TOKEN=${{ steps.codeartifact-token.AWS_CODEARTIFACT_TOKEN }}
 
       - name: export digests
         run: |
