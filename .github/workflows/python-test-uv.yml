@@ -24,6 +24,7 @@ on:
         required: false
         default: "arn:aws:iam::288761731503:role/github/code-artifact"
       codeartifact-domain:
+        type: string
         description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/"
         required: false
         default: "https://tracefy-288761731503.d.codeartifact.eu-central-1.amazonaws.com/"
@@ -47,7 +48,7 @@ jobs:
       - name: set credentials for private repository
         run: |
           echo "UV_INDEX_PRIVATE_REGISTRY_USERNAME=aws" >> $GITHUB_ENV
-          echo "UV_INDEX_PRIVATE_REGISTRY_PASSWORD=${{ steps.codeartifact-token.AWS_CODEARTIFACT_TOKEN }}" >> $GITHUB_ENV
+          echo "UV_INDEX_PRIVATE_REGISTRY_PASSWORD=${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}" >> $GITHUB_ENV
 
       - name: assert uv.lock is present
         shell: bash

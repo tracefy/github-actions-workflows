@@ -63,6 +63,7 @@ on:
         description: "the role assumed after authenticating to generate the codeartifact authorization token"
         required: false
       codeartifact-domain:
+        type: string
         description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/"
         required: false
 
@@ -182,7 +183,7 @@ jobs:
           target: ${{ inputs.target }}
           build-args: ${{ inputs.build-args }}
           outputs: type=image,${{ steps.vars.outputs.names }},push_by_digest=${{ inputs.push }},name-canonical=true,push=${{ inputs.push }}
-          secrets: AWS_CODEARTIFACT_TOKEN=${{ steps.codeartifact-token.AWS_CODEARTIFACT_TOKEN }}
+          secrets: AWS_CODEARTIFACT_TOKEN=${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
 
       - name: export digests
         run: |
