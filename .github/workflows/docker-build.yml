@@ -82,7 +82,7 @@ jobs:
 
       - name: build image
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           platforms: ${{ matrix.platform.name }}
           labels: ${{ steps.meta.outputs.labels }}
