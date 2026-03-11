@@ -34,7 +34,7 @@ jobs:
           php-version: '8.3'
           extensions: imagick, swoole
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
