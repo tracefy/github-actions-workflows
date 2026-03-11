@@ -16,7 +16,7 @@ jobs:
     runs-on: [ self-hosted ]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Declare variables
         id: vars
         shell: bash
@@ -30,7 +30,7 @@ jobs:
           username: ${{ secrets.GH_PA_USER }}
           password: ${{ secrets.GH_PA_TOKEN }}
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
