@@ -31,7 +31,7 @@ jobs:
       SSH_AUTH_SOCK: /tmp/${{ github.event.repository.name }}/ssh_agent.sock
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: setup vars
         id: variables

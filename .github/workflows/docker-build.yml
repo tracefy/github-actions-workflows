@@ -112,7 +112,7 @@ jobs:
         platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.sha }}
 

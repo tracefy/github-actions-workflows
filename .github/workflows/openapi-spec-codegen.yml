@@ -50,7 +50,7 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
