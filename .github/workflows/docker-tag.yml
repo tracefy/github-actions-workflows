@@ -16,12 +16,12 @@ jobs:
       - clean
     steps:
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ secrets.GH_PA_USER }}
           password: ${{ secrets.GH_PA_TOKEN }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Declare variables
         id: vars
         shell: bash
@@ -37,7 +37,7 @@ jobs:
         if: ${{ inputs.tag != 'latest' }}
         run: docker pull ghcr.io/tracefy/${{ github.event.repository.name }}:latest
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ secrets.GH_PA_USER }}
