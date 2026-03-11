@@ -215,7 +215,7 @@ jobs:
     needs: [build, prepare]
     steps:
       - name: download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ${{ env.DIGESTS_DIRECTORY }}
           pattern: ${{ needs.prepare.outputs.artifact_prefix }}-*
