@@ -140,7 +140,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: login to ghcr
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -170,7 +170,7 @@ jobs:
 
       - name: docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         env:
           ECR_NAME: ${{ inputs.ecr-repository != '' && inputs.ecr-repository || 'localhost:5000/dummy' }}
         with:
@@ -180,7 +180,7 @@ jobs:
 
       - name: build image
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile == '' && format('{0}/Dockerfile', inputs.context) || inputs.dockerfile }}
@@ -230,7 +230,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: login to ghcr
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -246,7 +246,7 @@ jobs:
 
       - name: docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         env:
           ECR_NAME: ${{ inputs.ecr-repository != '' && inputs.ecr-repository || 'localhost:5000/dummy' }}
         with:
