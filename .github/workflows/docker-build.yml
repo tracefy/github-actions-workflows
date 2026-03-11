@@ -202,7 +202,7 @@ jobs:
       # not possible to use output with matrix in this case
       # https://github.com/orgs/community/discussions/26639
       - name: upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.vars.outputs.artifact }}
           path: ${{ env.DIGESTS_DIRECTORY }}/*
