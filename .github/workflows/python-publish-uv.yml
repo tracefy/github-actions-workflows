@@ -45,17 +45,8 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      - name: assert uv.lock is present
-        shell: bash
-        run: |
-          # require uv.lock to be present in the repository
-          [ -f uv.lock ] || (echo "uv.lock missing" 1>&2 && exit 1)
-
       - name: install uv
         uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
 
       - name: extract codeartifact urls
         id: urls
@@ -88,6 +79,5 @@ jobs:
           UV_PUBLISH_URL: ${{ inputs.codeartifact-repository }}
           UV_PUBLISH_CHECK_URL: ${{ steps.urls.outputs.check_url }}
         run: |
-
           uv publish ${{ inputs.dir }}/dist/*
 
