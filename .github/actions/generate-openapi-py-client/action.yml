@@ -60,6 +60,7 @@ runs:
         aws-role-codeartifact: ${{ inputs.aws-role-codeartifact }}
 
     - name: set credentials for private repository
+      shell: bash
       run: |
         echo "UV_INDEX_PRIVATE_REGISTRY_USERNAME=aws" >> $GITHUB_ENV
         echo "UV_INDEX_PRIVATE_REGISTRY_PASSWORD=${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}" >> $GITHUB_ENV
