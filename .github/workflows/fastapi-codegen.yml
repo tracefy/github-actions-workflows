@@ -98,24 +98,12 @@ jobs:
           git config user.name "tracefy[bot]"
           git config user.email "tracefy[bot]@users.noreply.github.com"
 
-      # - name: generate python client
-      #   uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-py-client@v2
-      #   with:
-      #     generator: python
-      #     bootstrap: ${{ steps.changelog.outputs.bootstrap }}
-      #     severity: ${{ steps.changelog.outputs.severity }}
-      #     client_name: client-py
-
       - name: generate python client
-        uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-client@v2
+        uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-py-client@v2
         with:
-          generator: python
           bootstrap: ${{ steps.changelog.outputs.bootstrap }}
           severity: ${{ steps.changelog.outputs.severity }}
           client_name: client-py
-          spec_file: client/openapi.json
-          config_file: client/py/oag-config.yml
-          output_dir: client/py
 
       - name: generate typescript client
         uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-client@v2
