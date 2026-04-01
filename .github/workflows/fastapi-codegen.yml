@@ -18,6 +18,7 @@ on:
         required: true
 
 permissions:
+  id-token: write
   contents: write
 
 jobs:
@@ -96,6 +97,14 @@ jobs:
         run: |
           git config user.name "tracefy[bot]"
           git config user.email "tracefy[bot]@users.noreply.github.com"
+
+      # - name: generate python client
+      #   uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-py-client@v2
+      #   with:
+      #     generator: python
+      #     bootstrap: ${{ steps.changelog.outputs.bootstrap }}
+      #     severity: ${{ steps.changelog.outputs.severity }}
+      #     client_name: client-py
 
       - name: generate python client
         uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-client@v2
