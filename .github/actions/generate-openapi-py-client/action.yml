@@ -44,7 +44,7 @@ runs:
       with:
         openapi-file: ${{ inputs.spec_file }}
         config-file: ${{ inputs.config_file }}
-        extra-args: --meta=uv\ --custom-template-path=${{ inputs.custom_templates_dir }}\ --output-path=${{ inputs.output_dir }}\
+        extra-args: ["--meta=uv", "--custom-template-path=${{ inputs.custom_templates_dir }}", "--output-path=${{ inputs.output_dir }}"]
 
     - name: remove attr generated models
       shell: bash
