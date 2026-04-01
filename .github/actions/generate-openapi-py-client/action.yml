@@ -35,6 +35,7 @@ runs:
         cache-dependency-glob: "uv.lock"
 
     - name: install dependencies
+      shell: bash
       run: |
         uv sync --codegen
 
