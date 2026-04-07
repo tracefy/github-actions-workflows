@@ -69,7 +69,7 @@ jobs:
           url="${{ inputs.codeartifact-repository }}"
           url_short="${url#https://}"
           echo "@tcf:registry=${url}" >> ${{ inputs.dir }}/.npmrc
-          echo "//${url_no_method}:_authToken=${{steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN}}" >> ${{ inputs.dir }}/.npmrc
+          echo "//${url_short}:_authToken=${{steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN}}" >> ${{ inputs.dir }}/.npmrc
           cat ${{ inputs.dir}}/.npmrc
 
       - name: install
