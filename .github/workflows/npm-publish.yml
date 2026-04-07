@@ -50,8 +50,6 @@ jobs:
           version: latest
 
       - uses: actions/setup-node@v4
-        with:
-          cache: pnpm
 
       - name: extract codeartifact urls
         id: urls
@@ -78,7 +76,7 @@ jobs:
 
       - run: cd ${{ inputs.dir }}
       - name: install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
       - name: build
         run: pnpm run build
 
