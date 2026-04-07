@@ -38,7 +38,7 @@ permissions:
 
 jobs:
   build-publish:
-    runs-on: ubuntu
+    runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v6
