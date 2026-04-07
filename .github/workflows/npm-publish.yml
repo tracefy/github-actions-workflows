@@ -66,8 +66,10 @@ jobs:
       - name: configure private registry
         shell: bash
         run: |
-          echo "@tcf:registry=${{ inputs.codeartifact-repository }}" >> ${{ inputs.dir }}/.npmrc
-          echo "//${{ inputs.codeartifact-repository }}:_authToken=${{steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN}}" >> ${{ inputs.dir }}/.npmrc
+          url="${{ inputs.codeartifact-repository }}"
+          url_short="${url#https://}"
+          echo "@tcf:registry=${url}" >> ${{ inputs.dir }}/.npmrc
+          echo "//${url_no_method}:_authToken=${{steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN}}" >> ${{ inputs.dir }}/.npmrc
           cat ${{ inputs.dir}}/.npmrc
 
       - name: install
