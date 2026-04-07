@@ -1,0 +1,88 @@
+name: npm publish
+description: build and publish npm package to private registry
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        description: 'optional branch, tag, or commit to check out'
+        required: false
+        default: ''
+      dir:
+        type: string
+        description: "which package to build and publish"
+        required: false
+        default: "."
+      dry_run:
+        type: boolean
+        description: "whether to publish the package or not"
+        required: false
+        default: false
+      aws-role-oid:
+        type: string
+        description: "the web identity role used to authenticate to aws"
+        required: true
+      aws-role-codeartifact:
+        type: string
+        description: "the role assumed after authenticating to generate the codeartifact authorization token"
+        required: true
+      codeartifact-repository:
+        type: string
+        description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/{format}/{repository}/"
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-publish:
+    runs-on: self-hosted
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          cache: pnpm
+
+      - name: extract codeartifact urls
+        id: urls
+        shell: bash
+        run: |
+          repo=${{ inputs.codeartifact-repository }}
+          domain=$(echo "$repo" | awk -F/ '{print $1"//"$3}')
+          echo "domain=$domain" >> $GITHUB_OUTPUT
+          echo "check_url=${repo%/}/simple/" >> $GITHUB_OUTPUT
+
+      - name: generate codeartifact token
+        id: codeartifact-token
+        uses: tracefy/github-actions-workflows/.github/actions/aws-codeartifact-token@v2
+        with:
+          codeartifact-domain: ${{ steps.urls.outputs.domain }}
+          aws-role-oid: ${{ inputs.aws-role-oid }}
+          aws-role-codeartifact: ${{ inputs.aws-role-codeartifact }}
+
+      - name: configure private registry
+        shell: bash
+        run: |
+          echo "@tcf:registry=${{ inputs.codeartifact-repository }}" >> ~/.npmrc
+          echo "//${{ inputs.codeartifact-repository }}:_authToken=\${CODEARTIFACT_AUTH_TOKEN}" >> ~/.npmrc
+
+      - run: cd ${{ inputs.dir }}
+      - name: install
+        run: pnpm install --frozen-lockfile
+      - name: build
+        run: pnpm run build
+
+      - name: publish
+        if: ${{ !(inputs.dry_run || false) }}
+        env:
+          CODEARTIFACT_AUTH_TOKEN: ${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
+        run: npm publish --access private --provenance
+
