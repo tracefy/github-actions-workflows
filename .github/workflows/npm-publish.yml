@@ -87,5 +87,5 @@ jobs:
         if: ${{ !(inputs.dry_run || false) }}
         env:
           CODEARTIFACT_AUTH_TOKEN: ${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
-        run: cd ${{ inputs.dir }} && pnpm publish --access private --provenance
+        run: cd ${{ inputs.dir }} && pnpm publish --access private --provenance --no-git-checks
 
