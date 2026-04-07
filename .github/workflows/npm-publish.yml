@@ -71,18 +71,21 @@ jobs:
       - name: configure private registry
         shell: bash
         run: |
-          echo "@tcf:registry=${{ inputs.codeartifact-repository }}" >> ~/.npmrc
-          echo "//${{ inputs.codeartifact-repository }}:_authToken=\${CODEARTIFACT_AUTH_TOKEN}" >> ~/.npmrc
+          echo "@tcf:registry=${{ inputs.codeartifact-repository }}" >> ${{ inputs.dir }}/.npmrc
+          echo "//${{ inputs.codeartifact-repository }}:_authToken=\${CODEARTIFACT_AUTH_TOKEN}" >> ${{ inputs.dir }}/.npmrc
 
-      - run: cd ${{ inputs.dir }}
       - name: install
-        run: pnpm install
+        env:
+          CODEARTIFACT_AUTH_TOKEN: ${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
+        run: cd ${{ inputs.dir }} && pnpm install
       - name: build
-        run: pnpm run build
+        env:
+          CODEARTIFACT_AUTH_TOKEN: ${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
+        run: cd ${{ inputs.dir }} && pnpm run build
 
       - name: publish
         if: ${{ !(inputs.dry_run || false) }}
         env:
           CODEARTIFACT_AUTH_TOKEN: ${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
-        run: npm publish --access private --provenance
+        run: cd ${{ inputs.dir }} && npm publish --access private --provenance
 
