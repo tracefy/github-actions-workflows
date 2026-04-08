@@ -24,10 +24,9 @@ inputs:
     description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/"
     required: false
     default: "https://tracefy-288761731503.d.codeartifact.eu-central-1.amazonaws.com/"
-
-permissions:
-  id-token: write
-  contents: read
+  output_dir:
+    description: the output directory for the client
+    required: true
 
 runs:
   using: composite
