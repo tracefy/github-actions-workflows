@@ -104,6 +104,7 @@ jobs:
           bootstrap: ${{ steps.changelog.outputs.bootstrap }}
           severity: ${{ steps.changelog.outputs.severity }}
           client_name: client-py
+          output_dir: client/py
 
       - name: generate typescript client
         uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-client@v2
