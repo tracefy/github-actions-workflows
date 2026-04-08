@@ -5,9 +5,6 @@ inputs:
   generator:
     description: which generator to use
     required: true
-  commit_prefix:
-    description: the commit prefix to use for the generation commit
-    required: true
   bootstrap:
     description: whether to generate the initial client
     default: "false"
