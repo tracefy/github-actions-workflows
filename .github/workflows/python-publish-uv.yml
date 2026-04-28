@@ -62,33 +62,12 @@ jobs:
           echo "domain=$domain" >> $GITHUB_OUTPUT
           echo "check_url=${repo%/}/simple/" >> $GITHUB_OUTPUT
 
-      - name: generate codeartifact token
-        id: codeartifact-token
-        uses: tracefy/github-actions-workflows/.github/actions/aws-codeartifact-token@v2
+      - name: build and publish
+        uses: tracefy/github-actions-workflows/.github/actions/publish-uv-package@v2
         with:
-          codeartifact-domain: ${{ steps.urls.outputs.domain }}
+          version: ${{ inputs.version }}
+          dir: ${{ inputs.dir }}
+          dry_run: ${{ inputs.dry_run }}
           aws-role-oid: ${{ inputs.aws-role-oid }}
           aws-role-codeartifact: ${{ inputs.aws-role-codeartifact }}
-
-      - name: Set version override
-        if: ${{ inputs.version != '' }}
-        run: |
-          echo "overriding project version to ${{ inputs.version }}"
-          uv version "${{ inputs.version }}"
-
-      - name: build
-        shell: bash
-        run: |
-          uv build ${{ inputs.dir }}
-
-      - name: publish
-        if: ${{ !(inputs.dry_run || false) }}
-        shell: bash
-        env:
-          UV_PUBLISH_USERNAME: aws
-          UV_PUBLISH_PASSWORD: ${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}
-          UV_PUBLISH_URL: ${{ inputs.codeartifact-repository }}
-          UV_PUBLISH_CHECK_URL: ${{ steps.urls.outputs.check_url }}
-        run: |
-          uv publish ${{ inputs.dir }}/dist/*
-
+          codeartifact-repository: ${{ inputs.codeartifact-repository }}
