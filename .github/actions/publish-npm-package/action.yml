@@ -65,5 +65,5 @@ runs:
 
     - name: publish
       shell: bash
-      if: ${{ !(inputs.dry_run || false) }}
+      if: ${{ inputs.dry_run != 'true' }}
       run: cd ${{ inputs.dir }} && npm config list && npm publish
