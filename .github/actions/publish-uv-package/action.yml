@@ -49,7 +49,7 @@ runs:
       shell: bash
       run: |
         echo "overriding project version to ${{ inputs.version }}"
-        uv version "${{ inputs.version }}"
+        cd ${{ inputs.dir }} && uv version "${{ inputs.version }}"
 
     - name: build
       shell: bash
