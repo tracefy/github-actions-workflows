@@ -60,8 +60,10 @@ runs:
         cd ${{ inputs.dir }} && npm version "${{ inputs.version }}"
 
     - name: install
+      shell: bash
       run: cd ${{ inputs.dir }} && npm install
 
     - name: publish
+      shell: bash
       if: ${{ !(inputs.dry_run || false) }}
       run: cd ${{ inputs.dir }} && npm config list && npm publish
