@@ -1,0 +1,67 @@
+name: npm publish
+description: build and publish npm package to private registry
+
+inputs:
+  version:
+    description: "optional package version override"
+    required: false
+    default: ""
+  dir:
+    description: "the directory of the package to build and publish"
+    required: false
+    default: "."
+  dry_run:
+    description: "whether to publish the package or not"
+    required: false
+    default: "false"
+  aws-role-oid:
+    description: "the web identity role used to authenticate to aws"
+    required: true
+  aws-role-codeartifact:
+    description: "the role assumed after authenticating to generate the codeartifact authorization token"
+    required: true
+  codeartifact-repository:
+    description: "codeartifact repository url"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: extract codeartifact urls
+      id: urls
+      shell: bash
+      run: |
+        repo=${{ inputs.codeartifact-repository }}
+        domain=$(echo "$repo" | awk -F/ '{print $1"//"$3}')
+        echo "domain=$domain" >> $GITHUB_OUTPUT
+
+    - name: generate codeartifact token
+      id: codeartifact-token
+      uses: tracefy/github-actions-workflows/.github/actions/aws-codeartifact-token@v2
+      with:
+        codeartifact-domain: ${{ steps.urls.outputs.domain }}
+        aws-role-oid: ${{ inputs.aws-role-oid }}
+        aws-role-codeartifact: ${{ inputs.aws-role-codeartifact }}
+
+    - name: configure private registry
+      shell: bash
+      run: |
+        url="${{ inputs.codeartifact-repository }}"
+        url_short="${url#https://}"
+        echo "@tcf:registry=${url}" >> ${{ inputs.dir }}/.npmrc
+        echo "//${url_short}:_authToken=${{steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN}}" >> ${{ inputs.dir }}/.npmrc
+        cat ${{ inputs.dir}}/.npmrc
+
+    - name: set version override
+      if: ${{ inputs.version != '' }}
+      shell: bash
+      run: |
+        echo "overriding project version to ${{ inputs.version }}"
+        cd ${{ inputs.dir }} && npm version "${{ inputs.version }}"
+
+    - name: install
+      run: cd ${{ inputs.dir }} && npm install
+
+    - name: publish
+      if: ${{ !(inputs.dry_run || false) }}
+      run: cd ${{ inputs.dir }} && npm config list && npm publish
