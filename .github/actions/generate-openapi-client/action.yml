@@ -55,8 +55,8 @@ runs:
         git add ${{ inputs.output_dir }}
 
         if [[ "${{ inputs.bootstrap }}" == "true" ]]; then
-          echo "Bootstrapping ${{ inputs.client_name }} at version $VERSION"
-          git commit --allow-empty -m "chore: auto-generate ${{ inputs.client_name }}" -m "Release-As: $VERSION"
+          echo "Bootstrapping ${{ inputs.client_name }} from version $VERSION"
+          git commit --allow-empty -m "feat: initial auto-generate ${{ inputs.client_name }}"
           exit 0
         fi
 
