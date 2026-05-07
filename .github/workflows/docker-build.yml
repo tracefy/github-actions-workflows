@@ -88,6 +88,11 @@ jobs:
       platforms: ${{ steps.vars.outputs.platforms }}
       artifact_prefix: ${{ steps.vars.outputs.prefix }}
     steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          
       - name: set variables
         id: vars
         env:
