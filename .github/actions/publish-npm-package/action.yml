@@ -59,6 +59,16 @@ runs:
         echo "overriding project version to ${{ inputs.version }}"
         cd ${{ inputs.dir }} && npm version "${{ inputs.version }}"
 
+    - name: Get tag
+      id: tag
+      shell: bash
+      run: |
+        if [[ "${{ inputs.version }}" =~ (alpha|beta|rc|canary|next) ]]; then
+          echo "tag=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=latest" >> $GITHUB_OUTPUT
+        fi
+
     - name: install
       shell: bash
       run: cd ${{ inputs.dir }} && npm install
@@ -66,4 +76,4 @@ runs:
     - name: publish
       shell: bash
       if: ${{ inputs.dry_run != 'true' }}
-      run: cd ${{ inputs.dir }} && npm config list && npm publish
+      run: cd ${{ inputs.dir }} && npm config list && npm publish --tag ${{ steps.tag.outputs.tag }}
