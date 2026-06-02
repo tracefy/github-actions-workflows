@@ -107,14 +107,11 @@ jobs:
           output_dir: client/py
 
       - name: generate typescript client
-        uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-client@v2
+        uses: tracefy/github-actions-workflows/.github/actions/generate-openapi-ts-client@v2
         with:
-          generator: typescript-axios
           bootstrap: ${{ steps.changelog.outputs.bootstrap }}
           severity: ${{ steps.changelog.outputs.severity }}
           client_name: client-ts
-          spec_file: client/openapi.json
-          config_file: client/ts/oag-config.yml
           output_dir: client/ts
 
       - name: list changes
