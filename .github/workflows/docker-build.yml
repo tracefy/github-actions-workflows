@@ -71,6 +71,10 @@ on:
         type: string
         description: "https://<domain>-<domain-owner>.d.codeartifact.<region>.amazonaws.com/"
         required: false
+    secrets:
+      build-secrets:
+        description: "newline-separated ID=VALUE pairs forwarded to buildkit as --secret (consume in Dockerfile via RUN --mount=type=secret,id=ID)"
+        required: false
 
 env:
   REGISTRY_NAME: ghcr.io/tracefy/${{ inputs.ghcr-image-name || github.event.repository.name }}
@@ -197,6 +201,7 @@ jobs:
           outputs: type=image,${{ steps.vars.outputs.names }},push_by_digest=${{ inputs.push }},name-canonical=true,push=${{ inputs.push }}
           secrets: |
             "AWS_CODEARTIFACT_TOKEN=${{ steps.codeartifact-token.outputs.AWS_CODEARTIFACT_TOKEN }}"
+            ${{ secrets.build-secrets }}
 
       - name: export digests
         run: |
