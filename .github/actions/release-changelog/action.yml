@@ -1,0 +1,66 @@
+name: release-changelog
+description: build a dependabot-style markdown changelog from a repo's github releases newer than a given version
+
+inputs:
+  repository:
+    description: "github repository (owner/repo) to read releases from, e.g. cilium/cilium"
+    required: true
+  current-version:
+    description: "currently deployed version without a leading v; releases newer than this are included"
+    required: true
+  minor:
+    description: "if set, only include releases whose tag starts with v<minor>. (e.g. 1.18); empty includes all"
+    required: false
+    default: ""
+  token:
+    description: "optional github token to authenticate the releases api (higher rate limit)"
+    required: false
+    default: ""
+
+outputs:
+  changelog:
+    description: "markdown changelog of releases newer than current-version"
+    value: ${{ steps.gen.outputs.changelog }}
+
+runs:
+  using: composite
+  steps:
+    - name: generate changelog
+      id: gen
+      shell: bash
+      env:
+        REPOSITORY: ${{ inputs.repository }}
+        CURRENT_VERSION: ${{ inputs.current-version }}
+        MINOR: ${{ inputs.minor }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        # sed .../Q closes the pipe early which can SIGPIPE upstream; tolerate it
+        set +o pipefail
+
+        if [ -n "$GH_TOKEN" ]; then auth=(-H "Authorization: Bearer $GH_TOKEN"); else auth=(); fi
+        # restrict to a single minor when requested, otherwise all releases
+        if [ -n "$MINOR" ]; then
+          filter=".[] | select(.tag_name | startswith(\"v${MINOR}.\"))"
+        else
+          filter=".[]"
+        fi
+
+        # releases newest-first, sliced down to (but excluding) the current version
+        changelog="$(
+          curl -sL --retry 5 --retry-all-errors --retry-delay 5 "${auth[@]}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPOSITORY}/releases?per_page=100" \
+          | jq -cr "$filter" \
+          | sed "/\"tag_name\":\"v${CURRENT_VERSION}\"/Q" \
+          | jq -r '"# [" + .tag_name + "](" + .html_url + ")" + "\r\n" + .body + "\r\n"' \
+          | sed -uE "s@ #([0-9]+) @ [#\1](https://github.com/${REPOSITORY}/pull/\1) @g"
+        )"
+
+        echo "${changelog}"
+
+        {
+          echo 'changelog<<EOF'
+          echo "${changelog}"
+          echo 'EOF'
+        } >> "$GITHUB_OUTPUT"
