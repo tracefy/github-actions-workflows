@@ -93,7 +93,7 @@ jobs:
       artifact_prefix: ${{ steps.vars.outputs.prefix }}
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
           
@@ -121,7 +121,7 @@ jobs:
         platform: ${{ fromJson(needs.prepare.outputs.platforms) }}
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
 
