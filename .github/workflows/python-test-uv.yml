@@ -34,8 +34,13 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  check:
     runs-on: self-hosted
+    strategy:
+      # run every check even when one fails, so a PR reports all failures at once
+      fail-fast: false
+      matrix:
+        check: [format, lint, typecheck, pytest]
     steps:
       - name: checkout
         uses: actions/checkout@v7
@@ -75,24 +80,29 @@ jobs:
         run: apt-get -y install ${{ inputs.extra_packages }}
 
       - name: install dependencies
-        run: |
-          uv sync --all-extras --dev --all-packages
-          uv add --dev pytest pytest-cov coverage
-          uv add --dev ruff
-          uv add --dev basedpyright
+        run: uv sync --all-extras --dev --all-packages
+
+      - name: install shared test/lint tooling
+        # installs into the synced venv without touching pyproject.toml / uv.lock,
+        # so repos that don't declare these dev deps still work
+        run: uv pip install pytest pytest-cov coverage ruff basedpyright
 
       - name: format check
+        if: ${{ matrix.check == 'format' }}
         run: uv run ruff format --check
 
       - name: lint
+        if: ${{ matrix.check == 'lint' }}
         run: uv run ruff check
 
       - name: typecheck
+        if: ${{ matrix.check == 'typecheck' }}
         continue-on-error: ${{ inputs.require_typecheck == false }}
         run: uv run basedpyright
 
       # https://docs.pytest.org/en/stable/reference/exit-codes.html
       - name: test
+        if: ${{ matrix.check == 'pytest' }}
         shell: bash
         run: |
           if [[ "${{ inputs.test_coverage_configured_internally }}" == "true" ]]; then
@@ -115,6 +125,7 @@ jobs:
           }
 
       - name: coverage
+        if: ${{ matrix.check == 'pytest' }}
         shell: bash
         run: |
           if [[ -f .coverage ]]
