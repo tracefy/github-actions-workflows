@@ -1,0 +1,99 @@
+name: check migrations
+
+on:
+  workflow_call:
+    inputs:
+      migrations_dir:
+        description: Directory containing the golang-migrate migration files.
+        type: string
+        required: false
+        default: database/migrations
+
+jobs:
+  clean:
+    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
+  check-numbering:
+    needs:
+      - clean
+    runs-on: [ self-hosted ]
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v6
+      - name: Check migration numbering
+        env:
+          MIGRATIONS_DIR: ${{ inputs.migrations_dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -d "$MIGRATIONS_DIR" ]]; then
+            echo "No migrations directory ($MIGRATIONS_DIR); nothing to check."
+            exit 0
+          fi
+
+          status=0
+          declare -A up_count
+          declare -A down_count
+
+          shopt -s nullglob
+          for file in "$MIGRATIONS_DIR"/*.sql; do
+            name="$(basename "$file")"
+            if [[ "$name" =~ ^([0-9]{6})_.+\.(up|down)\.sql$ ]]; then
+              num="${BASH_REMATCH[1]}"
+              dir="${BASH_REMATCH[2]}"
+              if [[ "$dir" == "up" ]]; then
+                up_count["$num"]=$(( ${up_count["$num"]:-0} + 1 ))
+              else
+                down_count["$num"]=$(( ${down_count["$num"]:-0} + 1 ))
+              fi
+            else
+              echo "ERROR: unexpected migration filename: $name"
+              echo "       expected format: NNNNNN_description.(up|down).sql"
+              status=1
+            fi
+          done
+
+          numbers=$(printf '%s\n' "${!up_count[@]}" "${!down_count[@]}" | sort -un)
+
+          if [[ -z "$numbers" ]]; then
+            echo "No migrations found in $MIGRATIONS_DIR; nothing to check."
+            exit 0
+          fi
+
+          # Check for reused numbers and missing up/down pairs.
+          for num in $numbers; do
+            u=${up_count["$num"]:-0}
+            d=${down_count["$num"]:-0}
+            if (( u > 1 )); then
+              echo "ERROR: number $num is reused: $u .up.sql files"
+              status=1
+            fi
+            if (( d > 1 )); then
+              echo "ERROR: number $num is reused: $d .down.sql files"
+              status=1
+            fi
+            if (( u == 0 )); then
+              echo "ERROR: number $num is missing an .up.sql file"
+              status=1
+            fi
+            if (( d == 0 )); then
+              echo "::warning::migration $num is missing a .down.sql file. Add an empty ${num}_*.down.sql file if this migration is intentionally irreversible."
+            fi
+          done
+
+          # Check for a gapless sequence starting at 000001.
+          expected=1
+          for num in $numbers; do
+            value=$((10#$num))
+            if (( value > expected )); then
+              printf 'ERROR: gap in migration numbers: expected %06d but next is %s\n' "$expected" "$num"
+              status=1
+            fi
+            expected=$((value + 1))
+          done
+
+          if (( status == 0 )); then
+            echo "OK: migrations are numbered correctly ($(printf '%06d' $((expected - 1))) migrations)"
+          fi
+
+          exit $status
