@@ -10,12 +10,8 @@ on:
         default: database/migrations
 
 jobs:
-  clean:
-    uses: tracefy/github-actions-workflows/.github/workflows/utilities-clean.yml@master
   check-numbering:
-    needs:
-      - clean
-    runs-on: [ self-hosted ]
+    runs-on: [self-hosted]
     steps:
       - name: Git checkout
         uses: actions/checkout@v6
