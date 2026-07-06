@@ -14,7 +14,7 @@ jobs:
     runs-on: [self-hosted]
     steps:
       - name: Git checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Check migration numbering
         env:
           MIGRATIONS_DIR: ${{ inputs.migrations_dir }}
