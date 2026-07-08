@@ -199,8 +199,10 @@ jobs:
               ;;
           esac
 
-          # ACTION == bump: derive the version bump from the changelog severity
-          CHANGE=$(jq 'map(.level) | max // 0' changelog.json)
+          # ACTION == bump: derive the version bump from the changelog severity.
+          # oasdiff writes plain text "No changelog changes" (not JSON) when nothing is
+          # classified, so fall back to 0 (patch) on any jq error.
+          CHANGE=$(jq 'map(.level) | max // 0' changelog.json 2>/dev/null || echo 0)
           echo "Spec change severity is $CHANGE"
 
           # Extract major, minor, patch
