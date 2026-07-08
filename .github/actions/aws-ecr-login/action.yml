@@ -21,13 +21,13 @@ runs:
       echo "registry=$(echo '${{ inputs.repository }}' | cut -d/ -f1)" >> $GITHUB_OUTPUT
 
   - name: configure aws credentials
-    uses: aws-actions/configure-aws-credentials@v4
+    uses: aws-actions/configure-aws-credentials@v6
     with:
       role-to-assume: ${{ inputs.aws-role-oid }}
       aws-region: ${{ steps.info.outputs.region }}
 
   - name: assume ecr role
-    uses: aws-actions/configure-aws-credentials@v4
+    uses: aws-actions/configure-aws-credentials@v6
     with:
       role-to-assume: ${{ inputs.aws-role-ecr }}
       role-chaining: true

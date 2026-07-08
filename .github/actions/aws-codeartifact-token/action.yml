@@ -36,13 +36,13 @@ runs:
         echo "region=$region" >> $GITHUB_OUTPUT
 
     - name: configure aws credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ inputs.aws-role-oid }}
         aws-region: ${{ steps.info.outputs.region }}
 
     - name: assume codeartifact role
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ inputs.aws-role-codeartifact }}
         role-chaining: true
