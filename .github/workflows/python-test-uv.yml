@@ -81,7 +81,7 @@ jobs:
         run: apt-get -y install ${{ inputs.extra_packages }}
 
       - name: install dependencies
-        run: uv sync --all-extras --dev --all-packages
+        run: uv sync --all-extras --dev --all-packages --locked
 
       - name: install shared test/lint tooling
         # installs into the synced venv without touching pyproject.toml / uv.lock,
@@ -98,7 +98,7 @@ jobs:
         if: ${{ matrix.check == 'static' }}
         id: lint
         continue-on-error: true
-        run: uv run ruff check
+        run: uv run ruff check --output-format=github
 
       - name: typecheck
         if: ${{ matrix.check == 'static' }}

@@ -40,6 +40,9 @@ permissions:
 jobs:
   compare-openapi:
     runs-on: ubuntu-latest
+    concurrency:
+      group: openapi-spec-codegen-${{ github.repository }}-${{ inputs.branch }}
+      cancel-in-progress: true
     steps:
       - name: Generate GitHub App Token
         id: app-token
@@ -53,13 +56,10 @@ jobs:
         uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token }}
-          fetch-depth: 0
-
-      - name: Checkout branch
-        run: |
-          git fetch origin ${{ inputs.branch }}
-          git checkout ${{ inputs.branch }}
-          git reset --hard origin/${{ inputs.branch }}
+          ref: ${{ inputs.branch }}
+          # shallow: full history/tags are only needed for the release-tag lookup,
+          # which the compare step fetches on demand when the spec actually changed
+          fetch-depth: 1
 
       - name: assert uv.lock is present
         shell: bash
@@ -95,68 +95,112 @@ jobs:
       - name: set up python
         run: uv python install
 
-      - name: install oasdiff in runner
-        run: curl -fsSL https://raw.githubusercontent.com/oasdiff/oasdiff/main/install.sh | sh
-
       - name: configure git
         run: |
           git config user.name "tracefy[bot]"
           git config user.email "tracefy[bot]@users.noreply.github.com"
 
-      - name: compare-spec
-        id: compare
+      - name: generate spec and gate on changes
+        id: gate
         shell: bash
         run: |
           VERSION=$(jq -r '.client' .release-please-manifest.json)
           RELEASE_TAG="openapi/$VERSION"
           FILE_PATH="client/openapi.json"
+          {
+            echo "version=$VERSION"
+            echo "file_path=$FILE_PATH"
+          } >> "$GITHUB_OUTPUT"
+
+          # canonicalize a spec so semantically-equal specs compare byte-equal:
+          #   -S           sort object keys  (route/field ordering is insignificant)
+          #   sort arrays  required/enum/tags/params/anyOf ordering is insignificant
+          #   number . + 0 normalize int/float form (e.g. 0 vs 0.0 from tool drift)
+          # the array sort assumes no positional arrays (prefixItems / tuple items);
+          # the generated specs have none. revisit if tuple schemas are introduced.
+          canon() { jq -S 'walk(if type == "array" then sort elif type == "number" then . + 0 else . end)' "$1"; }
 
           echo "Looking for spec file at '$FILE_PATH'"
           if [[ ! -f "$FILE_PATH" ]]; then
-            echo "Spec not found"
-            uv run spec "$FILE_PATH"
-            git add "$FILE_PATH"
-            git commit -m "chore: auto-generate openapi spec" -m "Release-As: $VERSION"
-            echo "push=true" >> "$GITHUB_OUTPUT"
-            echo "Spec file generated at '$FILE_PATH'"
+            echo "Spec not found; generating from scratch"
+            uv run --no-dev --frozen spec "$FILE_PATH"
+            echo "action=generate" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "Spec file found"
 
+          # snapshot the committed spec before regenerating over it
+          cp "$FILE_PATH" client/openapi.committed.json
+
           echo "Generating openapi spec to compare"
-          uv run spec "$FILE_PATH"
+          uv run --no-dev --frozen spec "$FILE_PATH"
 
-          git show "${GITHUB_SHA}:${FILE_PATH}" > client/openapi.prev.json
-
-          CHANGE_COUNT=$(oasdiff -f json diff client/openapi.prev.json "$FILE_PATH" | jq length)
-
-          if [[ "$CHANGE_COUNT" -eq 0 ]]; then
-            echo "No spec changes since last commit"
-            echo "push=false" >> "$GITHUB_OUTPUT"
+          # call 1: has the spec changed vs what is committed? (the common early exit)
+          if diff <(canon client/openapi.committed.json) <(canon "$FILE_PATH") >/dev/null; then
+            echo "No semantic changes since last commit"
+            echo "action=nochange" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           echo "Looking for release with tag '$RELEASE_TAG'"
-          git rev-parse "$RELEASE_TAG"
+          # shallow checkout doesn't include tags; fetch just this one if it exists
+          git fetch --depth=1 origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}" 2>/dev/null || true
           if ! git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "No release found. You might need to create a manual release for the spec"
-            echo "push=false" >> "$GITHUB_OUTPUT"
+            echo "action=nochange" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          git show "${RELEASE_TAG}:${FILE_PATH}" > client/openapi.prev.json
+          git show "${RELEASE_TAG}:${FILE_PATH}" > client/openapi.released.json
 
-          CHANGE_COUNT=$(oasdiff -f json diff client/openapi.prev.json "$FILE_PATH" | jq length)
-
-          if [[ "$CHANGE_COUNT" -eq 0 ]]; then
-            echo "No spec changes since last release, resetting version to previous release"
-            git add "$FILE_PATH"
-            git commit -m "chore: auto-generate openapi spec" -m "Release-As: $VERSION"
-            echo "push=true" >> "$GITHUB_OUTPUT"
+          # call 2: identical to the last release? then reset to the current version (no bump)
+          if diff <(canon client/openapi.released.json) <(canon "$FILE_PATH") >/dev/null; then
+            echo "No semantic changes since last release, resetting version to previous release"
+            echo "action=reset" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          CHANGE=$(oasdiff -f json changelog client/openapi.prev.json "$FILE_PATH" | jq 'map(.level) | max // 0')
+          echo "Spec changed vs last release; classifying severity"
+          echo "action=bump" >> "$GITHUB_OUTPUT"
+
+      # call 3: only oasdiff invocation, and only on the rare "spec actually changed" path
+      - name: classify change severity
+        id: changelog
+        if: ${{ steps.gate.outputs.action == 'bump' }}
+        uses: oasdiff/oasdiff-action/changelog@v0
+        with:
+          base: client/openapi.released.json
+          revision: client/openapi.json
+          format: json
+          review: false
+          output-to-file: changelog.json
+
+      - name: commit spec
+        id: compare
+        shell: bash
+        run: |
+          VERSION="${{ steps.gate.outputs.version }}"
+          FILE_PATH="${{ steps.gate.outputs.file_path }}"
+          ACTION="${{ steps.gate.outputs.action }}"
+
+          case "$ACTION" in
+            nochange)
+              echo "No spec changes; nothing to commit"
+              echo "push=false" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+            generate|reset)
+              git add "$FILE_PATH"
+              git commit -m "chore: auto-generate openapi spec" -m "Release-As: $VERSION"
+              echo "push=true" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+
+          # ACTION == bump: derive the version bump from the changelog severity.
+          # oasdiff writes plain text "No changelog changes" (not JSON) when nothing is
+          # classified, so fall back to 0 (patch) on any jq error.
+          CHANGE=$(jq 'map(.level) | max // 0' changelog.json 2>/dev/null || echo 0)
           echo "Spec change severity is $CHANGE"
 
           # Extract major, minor, patch
