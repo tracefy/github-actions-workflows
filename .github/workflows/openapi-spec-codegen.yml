@@ -179,6 +179,8 @@ jobs:
         id: compare
         shell: bash
         run: |
+          cat changelog.json
+          
           VERSION="${{ steps.gate.outputs.version }}"
           FILE_PATH="${{ steps.gate.outputs.file_path }}"
           ACTION="${{ steps.gate.outputs.action }}"
