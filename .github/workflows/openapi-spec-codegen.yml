@@ -114,12 +114,14 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
           # canonicalize a spec so semantically-equal specs compare byte-equal:
-          #   -S           sort object keys  (route/field ordering is insignificant)
-          #   sort arrays  required/enum/tags/params/anyOf ordering is insignificant
-          #   number . + 0 normalize int/float form (e.g. 0 vs 0.0 from tool drift)
+          #   del info.version  release-please rewrites it on release; it is metadata,
+          #                     not an API change, so ignore it (else releases loop)
+          #   -S                sort object keys  (route/field ordering is insignificant)
+          #   sort arrays       required/enum/tags/params/anyOf ordering is insignificant
+          #   number . + 0      normalize int/float form (e.g. 0 vs 0.0 from tool drift)
           # the array sort assumes no positional arrays (prefixItems / tuple items);
           # the generated specs have none. revisit if tuple schemas are introduced.
-          canon() { jq -S 'walk(if type == "array" then sort elif type == "number" then . + 0 else . end)' "$1"; }
+          canon() { jq -S 'del(.info.version) | walk(if type == "array" then sort elif type == "number" then . + 0 else . end)' "$1"; }
 
           echo "Looking for spec file at '$FILE_PATH'"
           if [[ ! -f "$FILE_PATH" ]]; then
