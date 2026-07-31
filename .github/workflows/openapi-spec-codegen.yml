@@ -170,7 +170,7 @@ jobs:
       - name: classify change severity
         id: changelog
         if: ${{ steps.gate.outputs.action == 'bump' }}
-        uses: oasdiff/oasdiff-action/changelog@v0
+        uses: oasdiff/oasdiff-action/changelog@v0.1.10
         with:
           base: client/openapi.released.json
           revision: client/openapi.json
