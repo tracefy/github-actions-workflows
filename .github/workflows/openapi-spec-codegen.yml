@@ -123,6 +123,9 @@ jobs:
           # the generated specs have none. revisit if tuple schemas are introduced.
           canon() { jq -S 'del(.info.version) | walk(if type == "array" then sort elif type == "number" then . + 0 else . end)' "$1"; }
 
+          SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
+          echo "## OpenAPI spec ($FILE_PATH)" >> "$SUMMARY"
+
           echo "Looking for spec file at '$FILE_PATH'"
           if [[ ! -f "$FILE_PATH" ]]; then
             echo "Spec not found; generating from scratch"
@@ -138,18 +141,41 @@ jobs:
           echo "Generating openapi spec to compare"
           uv run --no-dev --frozen spec "$FILE_PATH"
 
+          # canon is the expensive pass, so overlap the two. tolerate failure on the
+          # committed spec: an unparseable one canonicalizes to nothing, compares as
+          # changed, and gets healed by the regenerated spec below
+          canon client/openapi.committed.json > "$RUNNER_TEMP/committed.canon.json" || true &
+          CANON_PID=$!
+          canon "$FILE_PATH" > "$RUNNER_TEMP/generated.canon.json"
+          wait "$CANON_PID"
+
           # call 1: has the spec changed vs what is committed? (the common early exit)
-          if diff <(canon client/openapi.committed.json) <(canon "$FILE_PATH") >/dev/null; then
+          if diff -q "$RUNNER_TEMP/committed.canon.json" "$RUNNER_TEMP/generated.canon.json" >/dev/null; then
             echo "No semantic changes since last commit"
+            echo "No semantic changes since the committed spec; nothing to commit." >> "$SUMMARY"
             echo "action=nochange" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          # this is literally the change being committed; the summarise step falls back
+          # to it when oasdiff classifies nothing (description-only changes, for example)
+          diff -u --label committed --label generated \
+            "$RUNNER_TEMP/committed.canon.json" "$RUNNER_TEMP/generated.canon.json" \
+            > "$RUNNER_TEMP/spec.diff" || true
+          DIFF_LINES=$(wc -l < "$RUNNER_TEMP/spec.diff")
+          echo "::group::canonical spec diff (committed -> generated), $DIFF_LINES lines"
+          head -n 2000 "$RUNNER_TEMP/spec.diff"
+          if (( DIFF_LINES > 2000 )); then
+            echo "[truncated: 2000 of $DIFF_LINES lines]"
+          fi
+          echo "::endgroup::"
 
           echo "Looking for release with tag '$RELEASE_TAG'"
           # shallow checkout doesn't include tags; fetch just this one if it exists
           git fetch --depth=1 origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}" 2>/dev/null || true
           if ! git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "No release found. You might need to create a manual release for the spec"
+            echo "Spec changed, but release tag \`$RELEASE_TAG\` does not exist; nothing to commit. You might need to create a manual release for the spec." >> "$SUMMARY"
             echo "action=nochange" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -157,7 +183,8 @@ jobs:
           git show "${RELEASE_TAG}:${FILE_PATH}" > client/openapi.released.json
 
           # call 2: identical to the last release? then reset to the current version (no bump)
-          if diff <(canon client/openapi.released.json) <(canon "$FILE_PATH") >/dev/null; then
+          canon client/openapi.released.json > "$RUNNER_TEMP/released.canon.json" || true
+          if diff -q "$RUNNER_TEMP/released.canon.json" "$RUNNER_TEMP/generated.canon.json" >/dev/null; then
             echo "No semantic changes since last release, resetting version to previous release"
             echo "action=reset" >> "$GITHUB_OUTPUT"
             exit 0
@@ -166,7 +193,8 @@ jobs:
           echo "Spec changed vs last release; classifying severity"
           echo "action=bump" >> "$GITHUB_OUTPUT"
 
-      # call 3: only oasdiff invocation, and only on the rare "spec actually changed" path
+      # call 3: the only oasdiff invocations, and only on the rare "spec actually
+      # changed" path. at most one of the two runs.
       - name: classify change severity
         id: changelog
         if: ${{ steps.gate.outputs.action == 'bump' }}
@@ -176,61 +204,166 @@ jobs:
           revision: client/openapi.json
           format: json
           review: false
-          output-to-file: changelog.json
+          output-to-file: client/openapi-changelog.json
 
-      - name: commit spec
-        id: compare
+      # a reset needs no severity, but still commits a change worth describing.
+      # purely decorative, so a failure here must not fail the run: the summarise
+      # step falls back to the raw spec diff
+      - name: describe drift from committed spec
+        if: ${{ steps.gate.outputs.action == 'reset' }}
+        continue-on-error: true
+        uses: oasdiff/oasdiff-action/changelog@v0
+        with:
+          base: client/openapi.committed.json
+          revision: client/openapi.json
+          format: json
+          review: false
+          output-to-file: client/openapi-changelog.json
+
+      - name: summarise spec changes
+        if: ${{ steps.gate.outputs.action != 'nochange' }}
         shell: bash
         run: |
           VERSION="${{ steps.gate.outputs.version }}"
           FILE_PATH="${{ steps.gate.outputs.file_path }}"
           ACTION="${{ steps.gate.outputs.action }}"
+          SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
+          MSG="$RUNNER_TEMP/commit-message.txt"
+          DETAILS="$RUNNER_TEMP/spec-changes.txt"
+          CHANGELOG="client/openapi-changelog.json"
+          # keep the commit body skimmable; the run summary carries the full list
+          BODY_MAX_LINES=40
+          SUMMARY_MAX_LINES=1000
+
+          # oasdiff writes plain text "No changelog changes" (not JSON) when it
+          # classifies nothing, and its output schema is not ours to rely on, so
+          # every read of it degrades to "unclassified" (a patch bump) rather than
+          # failing the run
+          SEVERITY=$(jq '[.[] | objects | .level | try tonumber catch 0] | max // 0' "$CHANGELOG" 2>/dev/null || echo 0)
+          [[ "$SEVERITY" =~ ^[0-9]+$ ]] || SEVERITY=0
 
           case "$ACTION" in
-            nochange)
-              echo "No spec changes; nothing to commit"
-              echo "push=false" >> "$GITHUB_OUTPUT"
-              exit 0
+            generate)
+              NEW_VERSION="$VERSION"
+              HEADLINE="No spec was committed yet; generated one covering $(jq '.paths | length' "$FILE_PATH") paths. Releasing as $VERSION."
+              LEAD=""
               ;;
-            generate|reset)
-              git add "$FILE_PATH"
-              git commit -m "chore: auto-generate openapi spec" -m "Release-As: $VERSION"
-              echo "push=true" >> "$GITHUB_OUTPUT"
-              exit 0
+            reset)
+              NEW_VERSION="$VERSION"
+              HEADLINE="Regenerated spec matches release $VERSION again; the committed spec had drifted from it, so the version stays at $VERSION."
+              LEAD="Changes applied to the committed spec:"
+              ;;
+            bump)
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+              if [[ -z "$MAJOR" || -z "$MINOR" || -z "$PATCH" ]]; then
+                echo "Invalid version: $VERSION"
+                exit 1
+              fi
+              case "$SEVERITY" in
+                0) KIND=patch; LEVEL="unclassified"; PATCH=$((PATCH + 1)) ;;
+                1) KIND=minor; LEVEL="non-breaking"; MINOR=$((MINOR + 1)); PATCH=0 ;;
+                2) KIND=major; LEVEL="warning"; MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+                *) KIND=major; LEVEL="breaking"; MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+              esac
+              NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+              HEADLINE="Spec changed since release $VERSION ($LEVEL); $KIND bump to $NEW_VERSION."
+              LEAD="Changes since release $VERSION:"
+              ;;
+            *)
+              echo "unexpected action '$ACTION'" 1>&2
+              exit 1
               ;;
           esac
 
-          # ACTION == bump: derive the version bump from the changelog severity.
-          # oasdiff writes plain text "No changelog changes" (not JSON) when nothing is
-          # classified, so fall back to 0 (patch) on any jq error.
-          CHANGE=$(jq 'map(.level) | max // 0' changelog.json 2>/dev/null || echo 0)
-          echo "Spec change severity is $CHANGE"
-
-          # Extract major, minor, patch
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-
-          # Validate version
-          if [[ -z "$MAJOR" || -z "$MINOR" || -z "$PATCH" ]]; then
-            echo "Invalid version: $VERSION"
-            exit 1
+          # group by oasdiff level: 3 breaking, 2 warning, 1 non-breaking
+          HAS_CHANGELOG=false
+          if jq -r '
+                def lvl: .level | try tonumber catch 0;
+                def heading(l): if l >= 3 then "Breaking changes" elif l == 2 then "Warnings" else "Non-breaking changes" end;
+                def loc: [(.operation // ""), (.path // "")] | map(select(type == "string" and . != "")) | join(" ");
+                [.[] | objects] | select(length > 0) | group_by(lvl) | sort_by(-(.[0] | lvl)) | map(
+                  "\(heading(.[0] | lvl)):",
+                  (sort_by(loc) | .[] | "- " + (if loc == "" then "" else "`\(loc)`: " end) + (.text // .id // "changed")),
+                  ""
+                ) | .[]
+              ' "$CHANGELOG" > "$RUNNER_TEMP/changelog.txt" 2>/dev/null && [[ -s "$RUNNER_TEMP/changelog.txt" ]]; then
+            HAS_CHANGELOG=true
           fi
 
-          # Bump logic
-          if [[ "$CHANGE" -eq 0 ]]; then
-            PATCH=$((PATCH + 1))
-          elif [[ "$CHANGE" -eq 1 ]]; then
-            MINOR=$((MINOR + 1))
-            PATCH=0
+          LEAD_RAW="oasdiff classified no API-level changes; canonical spec diff:"
+          if $HAS_CHANGELOG; then
+            { echo "$LEAD"; echo; cat "$RUNNER_TEMP/changelog.txt"; } > "$DETAILS"
+          elif [[ -s "$RUNNER_TEMP/spec.diff" ]]; then
+            { echo "$LEAD_RAW"; echo; cat "$RUNNER_TEMP/spec.diff"; } > "$DETAILS"
           else
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
+            : > "$DETAILS"
           fi
 
-          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          echo "Bumping spec version from $VERSION -> $NEW_VERSION"
-          git add "$FILE_PATH"
-          git commit -m "chore: auto-generate openapi spec" -m "Release-As: $NEW_VERSION"
+          DETAIL_LINES=$(wc -l < "$DETAILS")
+          echo "::group::spec changes ($DETAIL_LINES lines)"
+          head -n 5000 "$DETAILS"
+          if (( DETAIL_LINES > 5000 )); then
+            echo "[truncated: 5000 of $DETAIL_LINES lines]"
+          fi
+          echo "::endgroup::"
+
+          {
+            echo "chore: auto-generate openapi spec"
+            echo
+            echo "$HEADLINE"
+            if [[ -s "$DETAILS" ]]; then
+              echo
+              if (( DETAIL_LINES > BODY_MAX_LINES )); then
+                head -n "$BODY_MAX_LINES" "$DETAILS"
+                echo "... and $((DETAIL_LINES - BODY_MAX_LINES)) more lines; see the workflow run summary"
+              else
+                cat "$DETAILS"
+              fi
+            fi
+            echo
+            echo "Release-As: $NEW_VERSION"
+          } > "$MSG"
+
+          echo "::group::commit message"
+          cat "$MSG"
+          echo "::endgroup::"
+
+          {
+            echo "$HEADLINE"
+            echo
+            if [[ -s "$DETAILS" ]]; then
+              # both branches are capped: the step summary is dropped whole if it
+              # exceeds 1MB, so never write an unbounded file into it
+              if $HAS_CHANGELOG; then
+                head -n "$SUMMARY_MAX_LINES" "$DETAILS"
+              else
+                echo "$LEAD_RAW"
+                echo
+                # 4-backtick fence: a spec description may contain a 3-backtick one
+                echo '````diff'
+                tail -n +3 "$DETAILS" | head -n "$SUMMARY_MAX_LINES"
+                echo '````'
+              fi
+              if (( DETAIL_LINES > SUMMARY_MAX_LINES )); then
+                echo "Truncated to $SUMMARY_MAX_LINES of $DETAIL_LINES lines; see this step's log for the full list."
+              fi
+            fi
+          } >> "$SUMMARY"
+
+      - name: commit spec
+        id: compare
+        shell: bash
+        run: |
+          if [[ "${{ steps.gate.outputs.action }}" == "nochange" ]]; then
+            echo "No spec changes; nothing to commit"
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git add "${{ steps.gate.outputs.file_path }}"
+          # explicit cleanup mode: it is already the default for -F, but a repo-level
+          # commit.cleanup=strip would eat changelog lines starting with '#'
+          git commit --cleanup=whitespace -F "$RUNNER_TEMP/commit-message.txt"
           echo "push=true" >> "$GITHUB_OUTPUT"
 
       - name: push changes
