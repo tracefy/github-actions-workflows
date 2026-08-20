@@ -204,6 +204,7 @@ jobs:
             ${{ secrets.build-secrets }}
 
       - name: export digests
+        if: ${{ inputs.push }}
         run: |
           mkdir -p "${DIGESTS_DIRECTORY}"
           digest='${{ steps.build.outputs.digest }}'
@@ -212,6 +213,7 @@ jobs:
       # not possible to use output with matrix in this case
       # https://github.com/orgs/community/discussions/26639
       - name: upload digest
+        if: ${{ inputs.push }}
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.vars.outputs.artifact }}
