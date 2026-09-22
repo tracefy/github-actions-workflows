@@ -13,6 +13,10 @@ on:
         type: string
         default: ""
         description: "space seprated list of packages to install"
+      working-directory:
+        type: string
+        default: "."
+        description: "the directory holding the project to check, for repos whose project is not at the root"
       aws-role-oid:
         type: string
         description: "the web identity role used to authenticate to aws"
@@ -36,6 +40,9 @@ permissions:
 jobs:
   check:
     runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     strategy:
       # run every check even when one fails, so a PR reports all failures at once
       fail-fast: false
@@ -70,7 +77,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
+          cache-dependency-glob: "${{ inputs.working-directory }}/uv.lock"
 
       - name: set up python
         run: uv python install
