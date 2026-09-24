@@ -235,6 +235,40 @@ jobs:
           BODY_MAX_LINES=40
           SUMMARY_MAX_LINES=1000
 
+          # A field is made optional before it is dropped, so a client generated from the
+          # previous release keeps parsing once it goes. oasdiff rates every
+          # required->optional response change ERR, which would force a major bump on each
+          # retirement. Demote the ones backed by a default -- a generated client fills the
+          # field with it -- and leave a field that went optional with nothing to fall back
+          # on breaking. Only ever lowers a level, and keeps the original changelog on any
+          # failure, so a demote that cannot be computed costs nothing.
+          BASE_SPEC="client/openapi.released.json"
+          if [[ "$ACTION" == "bump" && -s "$CHANGELOG" && -s "$BASE_SPEC" ]]; then
+            DEMOTED="$RUNNER_TEMP/changelog.demoted.json"
+            # --slurpfile, not --argjson: a spec is too big to hand to jq through argv
+            if jq --slurpfile base "$BASE_SPEC" --slurpfile rev "$FILE_PATH" '
+                 # properties that left `required`, are still sent, and have no default
+                 def dropped($b; $r):
+                   [ $r.components.schemas // {} | to_entries[]
+                     | .key as $n | .value as $new
+                     | ((($b.components.schemas // {})[$n].required // []) - ($new.required // []))[]
+                     | select($new.properties[.] != null and ($new.properties[.] | has("default") | not))
+                   ];
+                 # oasdiff carries the property path in .text only; [..][0] because capture
+                 # yields *empty* on no match, which would drop the entry from the changelog
+                 def prop: [try (.text | capture("`(?<p>[^`]+)`").p) catch empty][0];
+                 dropped($base[0] // {}; $rev[0] // {}) as $bad
+                 | map(if type == "object"
+                        and .id == "response-property-became-optional"
+                        and (prop | . != null and (split("/") | last | IN($bad[]) | not))
+                       then .level = 1 else . end)
+               ' "$CHANGELOG" > "$DEMOTED" 2>/dev/null && [[ -s "$DEMOTED" ]]; then
+              mv "$DEMOTED" "$CHANGELOG"
+            else
+              echo "Could not demote retired-field changes; classifying the changelog as oasdiff wrote it"
+            fi
+          fi
+
           # oasdiff writes plain text "No changelog changes" (not JSON) when it
           # classifies nothing, and its output schema is not ours to rely on, so
           # every read of it degrades to "unclassified" (a patch bump) rather than
