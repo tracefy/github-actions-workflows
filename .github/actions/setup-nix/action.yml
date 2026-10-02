@@ -1,0 +1,27 @@
+name: setup-nix
+description: install nix unless it is already installed, and give it a github token
+inputs:
+  github-token:
+    description: "token nix uses for github.com, e.g. to resolve refs in nix flake update"
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+  - name: install nix
+    uses: DeterminateSystems/determinate-nix-action@v3
+    with:
+      github-token: ${{ inputs.github-token }}
+
+  # determinate-nix-action only writes access-tokens when it installs nix
+  - name: github access token
+    shell: bash
+    env:
+      TOKEN: ${{ inputs.github-token }}
+    run: |
+      echo "::add-mask::$TOKEN"
+      {
+        echo "NIX_CONFIG<<NIX_CONFIG_EOF"
+        if [ -n "${NIX_CONFIG:-}" ]; then echo "$NIX_CONFIG"; fi
+        echo "access-tokens = github.com=$TOKEN"
+        echo "NIX_CONFIG_EOF"
+      } >> "$GITHUB_ENV"
