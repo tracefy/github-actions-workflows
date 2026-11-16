@@ -249,8 +249,10 @@ jobs:
               LEAD=""
               ;;
             reset)
-              NEW_VERSION="$VERSION"
-              HEADLINE="Regenerated spec matches release $VERSION again; the committed spec had drifted from it, so the version stays at $VERSION."
+              # a patch, not $VERSION: re-releasing an existing tag fails and release-please re-proposes it forever
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+              NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+              HEADLINE="Regenerated spec matches release $VERSION again; the committed spec had drifted from it, so this is a patch release to $NEW_VERSION."
               LEAD="Changes applied to the committed spec:"
               ;;
             bump)
