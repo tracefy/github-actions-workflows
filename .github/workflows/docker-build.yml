@@ -58,11 +58,11 @@ on:
       aws-role-oid:
         type: string
         description: "the web identity role used to authenticate to aws"
-        required: false
+        default: arn:aws:iam::225989361606:role/oidc-github-terraform
       aws-role-ecr:
         type: string
         description: "the role assumed after authenticating to get access to ecr"
-        required: false
+        default: arn:aws:iam::288761731503:role/github/ecr
       aws-role-codeartifact:
         type: string
         description: "the role assumed after authenticating to generate the codeartifact authorization token"
@@ -79,6 +79,11 @@ on:
 env:
   REGISTRY_NAME: ghcr.io/tracefy/${{ inputs.ghcr-image-name || github.event.repository.name }}
   DIGESTS_DIRECTORY: ./${{ github.sha }}/digests
+  # ecr pull through cache for docker hub, avoids the anonymous per-ip rate limit
+  DOCKER_HUB_CACHE: 288761731503.dkr.ecr.eu-central-1.amazonaws.com/docker-hub
+  BUILDKITD_CONFIG: |
+    [registry."docker.io"]
+      mirrors = ["288761731503.dkr.ecr.eu-central-1.amazonaws.com/docker-hub"]
 
 permissions:
   id-token: write
@@ -144,9 +149,22 @@ jobs:
       #   with:
       #     cache-image: false
 
+      - name: login to ecr
+        id: ecr-login
+        # public repos can't assume the oidc role; they fall back to pulling from docker hub
+        continue-on-error: ${{ inputs.ecr-repository == '' }}
+        uses: tracefy/github-actions-workflows/.github/actions/aws-ecr-login@v2
+        with:
+          repository: ${{ inputs.ecr-repository || env.DOCKER_HUB_CACHE }}
+          aws-role-oid: ${{ inputs.aws-role-oid }}
+          aws-role-ecr: ${{ inputs.aws-role-ecr }}
+
       - name: setup buildx
         id: buildx
         uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: ${{ steps.ecr-login.outcome == 'success' && format('image={0}/moby/buildkit:buildx-stable-1', env.DOCKER_HUB_CACHE) || '' }}
+          buildkitd-config-inline: ${{ steps.ecr-login.outcome == 'success' && env.BUILDKITD_CONFIG || '' }}
 
       - name: login to ghcr
         uses: docker/login-action@v4
@@ -154,14 +172,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: login to ecr
-        if: ${{ inputs.ecr-repository != '' }}
-        uses: tracefy/github-actions-workflows/.github/actions/aws-ecr-login@v2
-        with:
-          repository: ${{ inputs.ecr-repository }}
-          aws-role-oid: ${{ inputs.aws-role-oid }}
-          aws-role-ecr: ${{ inputs.aws-role-ecr }}
 
       - name: set variables
         id: vars
@@ -238,8 +248,19 @@ jobs:
           mkdir -p "$PWD/${{ github.run_id }}/.docker"
           echo "DOCKER_CONFIG=$PWD/${{ github.run_id }}/.docker" >> $GITHUB_ENV
 
+      - name: login to ecr
+        id: ecr-login
+        continue-on-error: ${{ inputs.ecr-repository == '' }}
+        uses: tracefy/github-actions-workflows/.github/actions/aws-ecr-login@v2
+        with:
+          repository: ${{ inputs.ecr-repository || env.DOCKER_HUB_CACHE }}
+          aws-role-oid: ${{ inputs.aws-role-oid }}
+          aws-role-ecr: ${{ inputs.aws-role-ecr }}
+
       - name: setup buildx
         uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: ${{ steps.ecr-login.outcome == 'success' && format('image={0}/moby/buildkit:buildx-stable-1', env.DOCKER_HUB_CACHE) || '' }}
 
       - name: login to ghcr
         uses: docker/login-action@v4
@@ -247,14 +268,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: login to ecr
-        if: ${{ inputs.ecr-repository != '' }}
-        uses: tracefy/github-actions-workflows/.github/actions/aws-ecr-login@v2
-        with:
-          repository: ${{ inputs.ecr-repository }}
-          aws-role-oid: ${{ inputs.aws-role-oid }}
-          aws-role-ecr: ${{ inputs.aws-role-ecr }}
 
       - name: docker metadata
         id: meta
