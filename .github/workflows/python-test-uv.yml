@@ -5,7 +5,7 @@ on:
     inputs:
       require_typecheck:
         type: boolean
-        default: false
+        default: true
       test_coverage_configured_internally:
         type: boolean
         default: false
